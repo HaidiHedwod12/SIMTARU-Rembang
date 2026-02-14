@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 150 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 150 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 30% 10%;
+
+    --primary: 148 50% 24%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 43 75% 46%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 140 10% 95%;
+    --muted-foreground: 150 10% 40%;
+
+    --accent: 43 75% 46%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 140 10% 88%;
+    --input: 140 10% 88%;
+    --ring: 148 50% 24%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 148 50% 18%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 43 75% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 148 50% 22%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 148 40% 25%;
+    --sidebar-ring: 43 75% 46%;
+  }
+
+  .dark {
+    --background: 150 20% 6%;
+    --foreground: 0 0% 95%;
+    --card: 150 20% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 150 20% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 148 50% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 43 75% 46%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 150 15% 15%;
+    --muted-foreground: 150 10% 60%;
+    --accent: 43 75% 46%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 150 15% 18%;
+    --input: 150 15% 18%;
+    --ring: 148 50% 30%;
+    --sidebar-background: 150 20% 6%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 43 75% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 15% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 150 15% 15%;
+    --sidebar-ring: 43 75% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_0_rgba(31, 38, 135, 0.07)];
+  }
+
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-lg border border-white/10 shadow-xl;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-primary bg-[length:200%_auto] animate-gradient-slow;
+  }
+
+  .futuristic-border {
+    @apply relative overflow-hidden;
+
+    &::after {
+      content: '';
+      @apply absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none;
+    }
+  }
+
+  /* Government Professional Styles */
+  .bg-gis-pattern {
+    background-image: radial-gradient(circle, rgba(31, 94, 59, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .wave-divider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+    transform: rotate(180deg);
+  }
+
+  .wave-divider svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 60px;
+  }
+
+  .wave-divider .shape-fill {
+    fill: #f8faf9;
+  }
+}
+
+:root {
+  --gov-green: #1F5E3B;
+  --gov-gold: #D4A017;
+}
+
+@keyframes gradient-slow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.5;
+    filter: blur(40px);
+  }
+
+  50% {
+    opacity: 0.8;
+    filter: blur(60px);
+  }
+}
+
+.animate-gradient-slow {
+  animation: gradient-slow 8s ease infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
