@@ -3,19 +3,84 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Printer, Download, Search, ChevronLeft, ChevronRight, Loader2, Map, Layers, Maximize, Minimize, Copy, ExternalLink, Eye, EyeOff, CheckCircle2, Ruler, BoxSelect, Trash2
+  Printer, Download, Search, ChevronLeft, ChevronRight, Loader2, Map, Layers, Maximize, Minimize, Copy, ExternalLink, Eye, EyeOff, CheckCircle2, Ruler, BoxSelect, Trash2, ChevronDown, Palette, SlidersHorizontal, Plus, Minus
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import "leaflet/dist/leaflet.css";
 import { useToast } from "@/hooks/use-toast";
 
 const layers = [
-  { id: "kabupaten", label: "Batas Kabupaten", file: "batas_kabupaten.json", type: "polygon", color: "#D4A017", weight: 3, defaultOn: false },
-  { id: "kecamatan", label: "Batas Kecamatan", file: "batas_kecamatan.json", type: "polygon", color: "#1F5E3B", weight: 2, defaultOn: true },
-  { id: "desa", label: "Batas Desa", file: "batas_desa.json", type: "polygon", color: "#64748b", weight: 1, defaultOn: false },
-  { id: "jalan", label: "Jaringan Jalan", file: "jaringan_jalan.json", type: "line", color: "#ef4444", weight: 2, defaultOn: false },
-  { id: "sungai", label: "Sungai", file: "sungai.json", type: "line", color: "#0ea5e9", weight: 2, defaultOn: false },
-  { id: "rtrw", label: "RTRW Pola Ruang", file: "rtrw_pola_ruang.json", type: "pola", defaultOn: false },
+  {
+    id: "kabupaten",
+    label: "Batas Kabupaten",
+    category: "Batas Administrasi",
+    file: "batas_kabupaten.json",
+    type: "polygon",
+    color: "#D4A017",
+    weight: 3,
+    defaultOn: false,
+    primaryField: "Nama_Wilayah_Administrasi_Kabupaten/Kota"
+  },
+  {
+    id: "kecamatan",
+    label: "Batas Kecamatan",
+    category: "Batas Administrasi",
+    file: "batas_kecamatan.json",
+    type: "polygon",
+    color: "#1F5E3B",
+    weight: 2,
+    defaultOn: true,
+    primaryField: "Nama_Wilayah_Administrasi_Kecamatan/Distirk"
+  },
+  {
+    id: "desa",
+    label: "Batas Desa",
+    category: "Batas Administrasi",
+    file: "batas_desa.json",
+    type: "polygon",
+    color: "#64748b",
+    weight: 1,
+    defaultOn: false,
+    primaryField: "Nama_Wilayah_Administrasi_Kelurahan/Desa"
+  },
+  {
+    id: "jalan",
+    label: "Jaringan Jalan",
+    category: "Jaringan Transportasi",
+    file: "jaringan_jalan.json",
+    type: "line",
+    color: "#ef4444",
+    weight: 2,
+    defaultOn: false,
+    primaryField: "Fungsi_Jalan"
+  },
+  {
+    id: "sungai",
+    label: "Sungai",
+    category: "Perairan",
+    file: "Sungai.json",
+    type: "line",
+    color: "#0ea5e9",
+    weight: 2,
+    defaultOn: false,
+    primaryField: "Nama_Wilayah_Sungai"
+  },
+  {
+    id: "rtrw",
+    label: "RTRW Pola Ruang",
+    category: "Rencana Tata Ruang",
+    file: "rtrw_pola_ruang.json",
+    type: "pola",
+    defaultOn: false
+  },
+  {
+    id: "rdtr_lasem",
+    label: "RDTR Pola Ruang Perkotaan Lasem",
+    category: "Rencana Tata Ruang",
+    file: "rdtr_lasem.json",
+    type: "pola",
+    defaultOn: false
+  },
 ];
 
 const basemaps = [
@@ -79,6 +144,65 @@ const PetaInteraktif = () => {
   const [measureTool, setMeasureTool] = useState<'distance' | 'area' | 'none'>('none');
   const [measureResult, setMeasureResult] = useState<string | null>(null);
 
+  const [selectedFeature, setSelectedFeature] = useState<{ properties: any, layer: any, config: any } | null>(null);
+  const [infoPanelOpen, setInfoPanelOpen] = useState(false);
+  const lastSelectedLayerRef = useRef<any>(null);
+  const resetSelectionRef = useRef<(() => void) | null>(null);
+
+  // Styling & Category State
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [activeStyleLayerID, setActiveStyleLayerID] = useState<string | null>(null);
+  const [layerStyles, setLayerStyles] = useState<Record<string, { color: string, weight: number, opacity: number }>>(() => {
+    const initialStyles: Record<string, any> = {};
+    layers.forEach(l => {
+      initialStyles[l.id] = {
+        color: l.color || "#1F5E3B",
+        weight: l.weight || 2,
+        opacity: l.type === "polygon" ? 0.2 : 0.8
+      };
+    });
+    return initialStyles;
+  });
+
+  const toggleCategory = (cat: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
+  // Define reset selection logic
+  const resetSelection = () => {
+    setInfoPanelOpen(false);
+    if (lastSelectedLayerRef.current) {
+      const prevLayer = lastSelectedLayerRef.current.layer;
+      const prevConfig = lastSelectedLayerRef.current.config;
+      const currentStyle = layerStyles[prevConfig.id];
+
+      if (prevConfig.type === "pola") {
+        const obj = prevLayer.feature.properties.NAMOBJ || prevLayer.feature.properties.pola_ruang || "";
+        const color = obj.toLowerCase().includes("hutan") ? "#15803d" :
+          obj.toLowerCase().includes("sawah") ? "#86efac" :
+            obj.toLowerCase().includes("permukiman") ? "#fbbf24" :
+              obj.toLowerCase().includes("industri") ? "#94a3b8" : "#94a3b8";
+        prevLayer.setStyle({ color: "#334155", weight: 0.5, fillColor: color, fillOpacity: currentStyle?.opacity || 0.5 });
+      } else {
+        prevLayer.setStyle({
+          color: currentStyle?.color || prevConfig.color,
+          weight: currentStyle?.weight || prevConfig.weight,
+          fillOpacity: prevConfig.type === "polygon" ? (currentStyle?.opacity || 0.2) : 1
+        });
+      }
+      lastSelectedLayerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    resetSelectionRef.current = resetSelection;
+  }, [resetSelection]);
+
   useEffect(() => {
     let cancelled = false;
     const initMap = async () => {
@@ -110,12 +234,12 @@ const PetaInteraktif = () => {
         });
       });
 
-      map.on("click", () => {
+      map.on("click", (e: any) => {
         setContextMenu(null);
-      });
-
-      map.on("movestart", () => {
-        setContextMenu(null);
+        // Deselect if clicking on map background
+        if (resetSelectionRef.current) {
+          resetSelectionRef.current();
+        }
       });
 
       mapInstance.current = map;
@@ -249,29 +373,46 @@ const PetaInteraktif = () => {
 
         const geoJsonLayer = L.geoJSON(data, {
           style: (feature: any) => {
+            const currentStyle = layerStyles[layerConfig.id];
             if (layerConfig.type === "pola") {
-              // Simple categorical coloring for RTRW
               const obj = feature.properties.NAMOBJ || feature.properties.pola_ruang || "";
               const color = obj.toLowerCase().includes("hutan") ? "#15803d" :
                 obj.toLowerCase().includes("sawah") ? "#86efac" :
                   obj.toLowerCase().includes("permukiman") ? "#fbbf24" :
                     obj.toLowerCase().includes("industri") ? "#94a3b8" : "#94a3b8";
-              return { color: "#334155", weight: 0.5, fillColor: color, fillOpacity: 0.5 };
+              return { color: "#334155", weight: 0.5, fillColor: color, fillOpacity: currentStyle?.opacity || 0.5 };
             }
             return {
-              color: layerConfig.color,
-              weight: layerConfig.weight,
-              fillColor: layerConfig.color,
-              fillOpacity: layerConfig.type === "polygon" ? 0.2 : 1
+              color: currentStyle?.color || layerConfig.color,
+              weight: currentStyle?.weight || layerConfig.weight,
+              fillColor: currentStyle?.color || layerConfig.color,
+              fillOpacity: layerConfig.type === "polygon" ? (currentStyle?.opacity || 0.2) : 1
             };
           },
           onEachFeature: (feature: any, layer: any) => {
-            let popupContent = `<div class="p-2"><strong>Atribut:</strong><br/><div class="text-[10px] mt-1 space-y-1">`;
-            for (const key in feature.properties) {
-              popupContent += `<div><strong>${key}:</strong> ${feature.properties[key]}</div>`;
-            }
-            popupContent += `</div></div>`;
-            layer.bindPopup(popupContent);
+            layer.on({
+              click: (e: any) => {
+                L.DomEvent.stopPropagation(e);
+
+                // Reset previous selection style
+                if (resetSelectionRef.current) resetSelectionRef.current();
+
+                // Apply Selection Style
+                layer.setStyle({
+                  color: "#D4A017", // Gold/Selection color
+                  weight: 4,
+                  fillOpacity: 0.4
+                });
+
+                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                  layer.bringToFront();
+                }
+
+                lastSelectedLayerRef.current = { layer, config: layerConfig };
+                setSelectedFeature({ properties: feature.properties, layer, config: layerConfig });
+                setInfoPanelOpen(true);
+              }
+            });
           }
         }).addTo(mapInstance.current);
 
@@ -297,7 +438,39 @@ const PetaInteraktif = () => {
       }
     });
 
-  }, [activeL, L]);
+  }, [activeL, L, resetSelection, layerStyles]);
+
+  // Handle Dynamic Re-styling when layerStyles change
+  useEffect(() => {
+    if (!mapInstance.current || !L) return;
+
+    Object.entries(geoJsonLayersRef.current).forEach(([id, geoJsonLayer]) => {
+      const style = layerStyles[id];
+      const config = layers.find(l => l.id === id);
+      if (!style || !config) return;
+
+      geoJsonLayer.eachLayer((layer: any) => {
+        // Don't override if currently selected
+        if (lastSelectedLayerRef.current?.layer === layer) return;
+
+        if (config.type === "pola") {
+          const obj = layer.feature.properties.NAMOBJ || layer.feature.properties.pola_ruang || "";
+          const color = obj.toLowerCase().includes("hutan") ? "#15803d" :
+            obj.toLowerCase().includes("sawah") ? "#86efac" :
+              obj.toLowerCase().includes("permukiman") ? "#fbbf24" :
+                obj.toLowerCase().includes("industri") ? "#94a3b8" : "#94a3b8";
+          layer.setStyle({ fillOpacity: style.opacity });
+        } else {
+          layer.setStyle({
+            color: style.color,
+            weight: style.weight,
+            fillColor: style.color,
+            fillOpacity: config.type === "polygon" ? style.opacity : 1
+          });
+        }
+      });
+    });
+  }, [layerStyles, L]);
 
   const toggleLayer = (id: string) => {
     setActiveL((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -449,38 +622,79 @@ const PetaInteraktif = () => {
     };
   }, [measureTool, L]);
 
+  const activeLayerConfig = activeStyleLayerID ? layers.find(l => l.id === activeStyleLayerID) : null;
+  const currentLayerStyle = activeStyleLayerID ? layerStyles[activeStyleLayerID] : null;
+
+  const handleStyleChange = (key: 'color' | 'weight' | 'opacity', value: string | number) => {
+    if (!activeStyleLayerID) return;
+    setLayerStyles(prev => ({
+      ...prev,
+      [activeStyleLayerID]: {
+        ...prev[activeStyleLayerID],
+        [key]: value
+      }
+    }));
+  };
+
   return (
     <Layout hideFooter hideNavbar={isFullscreen || !isNavbarVisible}>
       <div ref={containerRef} className={`relative flex transition-all duration-200 ${(isFullscreen || !isNavbarVisible) ? "h-screen w-screen bg-slate-100" : "h-[calc(100vh-64px)]"}`}>
         {/* Side panel */}
         <div className={`relative z-[1001] flex-shrink-0 border-r bg-card transition-all duration-200 ${panelOpen ? "w-72" : "w-0 overflow-hidden"}`}>
-          <div className="p-4 space-y-6">
-            <div>
-              <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#D4A017]">Layer Tematik</h2>
-              <div className="space-y-3">
-                {layers.map((l) => (
-                  <label key={l.id} className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 hover:text-[#1F5E3B]">
-                    <Checkbox checked={activeL.includes(l.id)} onCheckedChange={() => toggleLayer(l.id)} />
-                    {l.label}
-                  </label>
-                ))}
-              </div>
-            </div>
+          <div className="p-4 space-y-2 overflow-y-auto h-full custom-scrollbar bg-slate-50/30">
+            {["Batas Administrasi", "Jaringan Transportasi", "Perairan", "Rencana Tata Ruang"].map((cat) => {
+              const isOpen = !collapsedCategories.has(cat);
+              const catLayers = layers.filter(l => l.category === cat);
+              return (
+                <div key={cat} className="mb-2">
+                  <button
+                    onClick={() => toggleCategory(cat)}
+                    className="flex w-full items-center justify-between py-3 px-2 rounded-xl hover:bg-slate-100/80 transition-all group"
+                  >
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4A017]">
+                      {cat}
+                    </h2>
+                    <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform duration-300 ${isOpen ? "" : "-rotate-90"}`} />
+                  </button>
 
-            <div>
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#D4A017]">Legenda Statis</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                  <span className="inline-block h-3 w-3 rounded-full bg-[#ef4444]" /> Jaringan Jalan
+                  <div className={`space-y-1 transition-all duration-300 ease-in-out ${isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
+                    {catLayers.map((l) => (
+                      <div key={l.id} className="group relative mb-1 last:mb-0">
+                        <div className={`flex flex-col p-2.5 rounded-2xl transition-all ${activeL.includes(l.id) ? "bg-white shadow-sm ring-1 ring-slate-100/50" : "hover:bg-slate-100/30"}`}>
+                          <label className="flex cursor-pointer items-start gap-3">
+                            <Checkbox
+                              checked={activeL.includes(l.id)}
+                              onCheckedChange={() => toggleLayer(l.id)}
+                              className="mt-0.5 border-slate-300 data-[state=checked]:bg-[#1F5E3B] data-[state=checked]:border-[#1F5E3B]"
+                            />
+                            <span className={`text-[12px] font-bold leading-tight transition-colors ${activeL.includes(l.id) ? "text-[#1F5E3B]" : "text-slate-600 group-hover:text-slate-800"}`}>
+                              {l.label}
+                            </span>
+                          </label>
+
+                          {activeL.includes(l.id) && (
+                            <div className="mt-2 flex items-center gap-2 pl-7 animate-in fade-in slide-in-from-top-1 duration-200">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveStyleLayerID(activeStyleLayerID === l.id ? null : l.id);
+                                }}
+                                className="h-5 w-10 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-105 active:scale-95 flex items-center justify-center overflow-hidden"
+                                style={{ backgroundColor: layerStyles[l.id]?.color || l.color }}
+                                title="Pengaturan Gaya"
+                              >
+                                <Palette className="h-2.5 w-2.5 text-white mix-blend-difference opacity-70" />
+                              </button>
+                              <span className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Gaya Layer</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                  <span className="inline-block h-3 w-3 rounded-full bg-[#0ea5e9]" /> Sungai
-                </div>
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                  <span className="inline-block h-3 w-3 rounded border border-black/10 bg-[#D4A017]/20" /> Batas Wilayah
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
@@ -682,6 +896,141 @@ const PetaInteraktif = () => {
                   <p className="text-sm font-black text-[#1F5E3B] uppercase tracking-widest">Inisialisasi GIS</p>
                   <p className="text-xs text-slate-500 font-medium">Memuat layer spasial...</p>
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Floating Feature Info Panel */}
+        <div
+          className={`absolute right-6 top-24 z-[1005] w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${infoPanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          style={{ maxHeight: "calc(100% - 140px)" }}
+        >
+          {selectedFeature && (
+            <div className="flex h-full max-h-[inherit] flex-col overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-100/50 p-5">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-10 w-10 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                    style={{ backgroundColor: selectedFeature.config.color || "#1F5E3B" }}
+                  >
+                    <Map className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-[#1F5E3B]">Detail Informasi</h3>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{selectedFeature.config.label}</p>
+                  </div>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={resetSelection}
+                  className="rounded-xl h-8 w-8 hover:bg-slate-100 transition-all"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-white/50">
+                <div className="space-y-5">
+                  {Object.entries(selectedFeature.properties).map(([key, value]) => {
+                    if (value === null || value === undefined) return null;
+                    const label = key.replace(/_/g, " ");
+                    const formattedValue = String(value).replace(/_/g, " ");
+                    const isPrimary = key === selectedFeature.config.primaryField;
+
+                    return (
+                      <div key={key} className={`group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isPrimary ? "bg-[#1F5E3B]/5 p-4 rounded-2xl border border-[#1F5E3B]/10 shadow-sm" : ""}`}>
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 transition-colors group-hover:text-[#1F5E3B]">
+                          {label}
+                        </div>
+                        <div className={`${isPrimary ? "text-[13px] font-black text-[#1F5E3B] leading-tight" : "text-xs font-bold text-slate-700"} break-words`}>
+                          {formattedValue}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 text-center">
+                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+                  © SIMTARU REMBANG 2026
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Floating Style Editor Panel */}
+        <div
+          className={`absolute left-[300px] top-4 z-[1010] w-64 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-white/20 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] ${activeStyleLayerID ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"}`}
+        >
+          {activeStyleLayerID && (
+            <div className="p-5 flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-slate-100/50 pb-3">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-[#1F5E3B]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">Editor Gaya</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg" onClick={() => setActiveStyleLayerID(null)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-2">Layer: {layers.find(l => l.id === activeStyleLayerID)?.label}</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {["#1F5E3B", "#D4A017", "#ef4444", "#0ea5e9", "#f59e0b", "#6366f1", "#ec4899", "#22c55e", "#64748b", "#000000"].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setLayerStyles(prev => ({ ...prev, [activeStyleLayerID]: { ...prev[activeStyleLayerID], color: c } }))}
+                      className={`h-8 w-full rounded-lg border-2 transition-all ${layerStyles[activeStyleLayerID]?.color === c ? "border-[#1F5E3B] scale-110 shadow-md" : "border-white hover:border-slate-200"}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Transparansi</span>
+                    <span className="text-[10px] font-bold text-[#1F5E3B]">{Math.round((layerStyles[activeStyleLayerID]?.opacity || 0) * 100)}%</span>
+                  </div>
+                  <input
+                    type="range" min="0" max="1" step="0.1"
+                    value={layerStyles[activeStyleLayerID]?.opacity || 0}
+                    onChange={(e) => setLayerStyles(prev => ({ ...prev, [activeStyleLayerID]: { ...prev[activeStyleLayerID], opacity: parseFloat(e.target.value) } }))}
+                    className="w-full accent-[#1F5E3B] cursor-pointer"
+                  />
+                </div>
+
+                {layers.find(l => l.id === activeStyleLayerID)?.type !== "pola" && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Ketebalan Garis</span>
+                      <span className="text-[10px] font-bold text-[#1F5E3B]">{layerStyles[activeStyleLayerID]?.weight || 0}px</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline" size="icon" className="h-8 w-8 rounded-lg"
+                        onClick={() => setLayerStyles(prev => ({ ...prev, [activeStyleLayerID]: { ...prev[activeStyleLayerID], weight: Math.max(1, (prev[activeStyleLayerID]?.weight || 2) - 1) } }))}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#1F5E3B]" style={{ width: `${((layerStyles[activeStyleLayerID]?.weight || 2) / 10) * 100}%` }} />
+                      </div>
+                      <Button
+                        variant="outline" size="icon" className="h-8 w-8 rounded-lg"
+                        onClick={() => setLayerStyles(prev => ({ ...prev, [activeStyleLayerID]: { ...prev[activeStyleLayerID], weight: Math.min(10, (prev[activeStyleLayerID]?.weight || 2) + 1) } }))}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
