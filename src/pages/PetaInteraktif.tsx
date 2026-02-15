@@ -152,11 +152,14 @@ const PetaInteraktif = () => {
   // Styling & Category State
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [activeStyleLayerID, setActiveStyleLayerID] = useState<string | null>(null);
-  const [layerStyles, setLayerStyles] = useState<Record<string, { color: string, weight: number, opacity: number }>>(() => {
+  const [activeLabels, setActiveLabels] = useState<Set<string>>(new Set());
+  const [featureStyles, setFeatureStyles] = useState<Record<string, { fillColor?: string, strokeColor?: string }>>({}); // Key: "layerID|primaryFieldValue"
+  const [layerStyles, setLayerStyles] = useState<Record<string, { fillColor: string, strokeColor: string, weight: number, opacity: number }>>(() => {
     const initialStyles: Record<string, any> = {};
     layers.forEach(l => {
       initialStyles[l.id] = {
-        color: l.color || "#1F5E3B",
+        fillColor: l.color || "#1F5E3B",
+        strokeColor: l.color || "#1F5E3B",
         weight: l.weight || 2,
         opacity: l.type === "polygon" ? 0.2 : 0.8
       };
@@ -173,6 +176,15 @@ const PetaInteraktif = () => {
     });
   };
 
+  const toggleLabels = (id: string) => {
+    setActiveLabels(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   // Define reset selection logic
   const resetSelection = () => {
     setInfoPanelOpen(false);
@@ -180,6 +192,10 @@ const PetaInteraktif = () => {
       const prevLayer = lastSelectedLayerRef.current.layer;
       const prevConfig = lastSelectedLayerRef.current.config;
       const currentStyle = layerStyles[prevConfig.id];
+      const pField = prevConfig.primaryField;
+      const pValue = pField ? prevLayer.feature.properties[pField] : null;
+      const fKey = pValue ? `${prevConfig.id}|${pValue}` : null;
+      const indStyle = fKey ? featureStyles[fKey] : null;
 
       if (prevConfig.type === "pola") {
         const obj = prevLayer.feature.properties.NAMOBJ || prevLayer.feature.properties.pola_ruang || "";
@@ -190,7 +206,8 @@ const PetaInteraktif = () => {
         prevLayer.setStyle({ color: "#334155", weight: 0.5, fillColor: color, fillOpacity: currentStyle?.opacity || 0.5 });
       } else {
         prevLayer.setStyle({
-          color: currentStyle?.color || prevConfig.color,
+          color: indStyle?.strokeColor || currentStyle?.strokeColor || prevConfig.color,
+          fillColor: indStyle?.fillColor || currentStyle?.fillColor || prevConfig.color,
           weight: currentStyle?.weight || prevConfig.weight,
           fillOpacity: prevConfig.type === "polygon" ? (currentStyle?.opacity || 0.2) : 1
         });
@@ -374,6 +391,11 @@ const PetaInteraktif = () => {
         const geoJsonLayer = L.geoJSON(data, {
           style: (feature: any) => {
             const currentStyle = layerStyles[layerConfig.id];
+            const pField = (layerConfig as any).primaryField;
+            const pValue = pField ? feature.properties[pField] : null;
+            const fKey = pValue ? `${layerConfig.id}|${pValue}` : null;
+            const indStyle = fKey ? featureStyles[fKey] : null;
+
             if (layerConfig.type === "pola") {
               const obj = feature.properties.NAMOBJ || feature.properties.pola_ruang || "";
               const color = obj.toLowerCase().includes("hutan") ? "#15803d" :
@@ -383,13 +405,29 @@ const PetaInteraktif = () => {
               return { color: "#334155", weight: 0.5, fillColor: color, fillOpacity: currentStyle?.opacity || 0.5 };
             }
             return {
-              color: currentStyle?.color || layerConfig.color,
+              color: indStyle?.strokeColor || currentStyle?.strokeColor || layerConfig.color,
               weight: currentStyle?.weight || layerConfig.weight,
-              fillColor: currentStyle?.color || layerConfig.color,
+              fillColor: indStyle?.fillColor || currentStyle?.fillColor || layerConfig.color,
               fillOpacity: layerConfig.type === "polygon" ? (currentStyle?.opacity || 0.2) : 1
             };
           },
           onEachFeature: (feature: any, layer: any) => {
+            // Add Label if enabled
+            if (activeLabels.has(layerConfig.id) && layerConfig.primaryField) {
+              const name = feature.properties[layerConfig.primaryField];
+              if (name) {
+                const center = layer.getCenter ? layer.getCenter() : layer.getBounds().getCenter();
+                layer.bindTooltip(name, {
+                  permanent: true,
+                  direction: 'center',
+                  className: 'map-label-tooltip',
+                  offset: [0, 0]
+                });
+                // Force open at centroid
+                layer.openTooltip(center);
+              }
+            }
+
             layer.on({
               click: (e: any) => {
                 L.DomEvent.stopPropagation(e);
@@ -438,7 +476,39 @@ const PetaInteraktif = () => {
       }
     });
 
-  }, [activeL, L, resetSelection, layerStyles]);
+  }, [activeL, L, resetSelection, layerStyles, activeLabels]);
+
+  // Handle Label Visibility Changes
+  useEffect(() => {
+    if (!mapInstance.current || !L) return;
+
+    Object.entries(geoJsonLayersRef.current).forEach(([id, geoJsonLayer]) => {
+      const config = layers.find(l => l.id === id);
+      if (!config) return;
+
+      const shouldShow = activeLabels.has(id);
+
+      geoJsonLayer.eachLayer((layer: any) => {
+        if (shouldShow && config.primaryField) {
+          const name = layer.feature.properties[config.primaryField];
+          if (name) {
+            const center = layer.getCenter ? layer.getCenter() : layer.getBounds().getCenter();
+            if (!layer.getTooltip()) {
+              layer.bindTooltip(name, {
+                permanent: true,
+                direction: 'center',
+                className: 'map-label-tooltip',
+                offset: [0, 0]
+              });
+            }
+            layer.openTooltip(center);
+          }
+        } else if (!shouldShow) {
+          layer.closeTooltip();
+        }
+      });
+    });
+  }, [activeLabels, L]);
 
   // Handle Dynamic Re-styling when layerStyles change
   useEffect(() => {
@@ -453,6 +523,11 @@ const PetaInteraktif = () => {
         // Don't override if currently selected
         if (lastSelectedLayerRef.current?.layer === layer) return;
 
+        const pField = config.primaryField;
+        const pValue = pField ? layer.feature.properties[pField] : null;
+        const fKey = pValue ? `${config.id}|${pValue}` : null;
+        const indStyle = fKey ? featureStyles[fKey] : null;
+
         if (config.type === "pola") {
           const obj = layer.feature.properties.NAMOBJ || layer.feature.properties.pola_ruang || "";
           const color = obj.toLowerCase().includes("hutan") ? "#15803d" :
@@ -462,15 +537,15 @@ const PetaInteraktif = () => {
           layer.setStyle({ fillOpacity: style.opacity });
         } else {
           layer.setStyle({
-            color: style.color,
+            color: indStyle?.strokeColor || style.strokeColor,
             weight: style.weight,
-            fillColor: style.color,
+            fillColor: indStyle?.fillColor || style.fillColor,
             fillOpacity: config.type === "polygon" ? style.opacity : 1
           });
         }
       });
     });
-  }, [layerStyles, L]);
+  }, [layerStyles, L, featureStyles]);
 
   const toggleLayer = (id: string) => {
     setActiveL((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -625,7 +700,7 @@ const PetaInteraktif = () => {
   const activeLayerConfig = activeStyleLayerID ? layers.find(l => l.id === activeStyleLayerID) : null;
   const currentLayerStyle = activeStyleLayerID ? layerStyles[activeStyleLayerID] : null;
 
-  const handleStyleChange = (key: 'color' | 'weight' | 'opacity', value: string | number) => {
+  const handleStyleChange = (key: 'fillColor' | 'strokeColor' | 'weight' | 'opacity', value: string | number) => {
     if (!activeStyleLayerID) return;
     setLayerStyles(prev => ({
       ...prev,
@@ -634,6 +709,34 @@ const PetaInteraktif = () => {
         [key]: value
       }
     }));
+
+    // If global colors change, clear all individual overrides for this layer
+    if (key === 'fillColor' || key === 'strokeColor') {
+      setFeatureStyles(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(k => {
+          if (k.startsWith(`${activeStyleLayerID}|`)) {
+            delete next[k];
+          }
+        });
+        return next;
+      });
+    }
+  };
+
+  const handleFeatureStyleChange = (key: 'fillColor' | 'strokeColor', color: string) => {
+    if (!selectedFeature) return;
+    const config = selectedFeature.config;
+    const pField = config.primaryField;
+    const pValue = pField ? selectedFeature.properties[pField] : null;
+
+    if (pValue) {
+      const fKey = `${config.id}|${pValue}`;
+      setFeatureStyles(prev => ({
+        ...prev,
+        [fKey]: { ...prev[fKey], [key]: color }
+      }));
+    }
   };
 
   return (
@@ -673,19 +776,37 @@ const PetaInteraktif = () => {
                           </label>
 
                           {activeL.includes(l.id) && (
-                            <div className="mt-2 flex items-center gap-2 pl-7 animate-in fade-in slide-in-from-top-1 duration-200">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveStyleLayerID(activeStyleLayerID === l.id ? null : l.id);
-                                }}
-                                className="h-5 w-10 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-105 active:scale-95 flex items-center justify-center overflow-hidden"
-                                style={{ backgroundColor: layerStyles[l.id]?.color || l.color }}
-                                title="Pengaturan Gaya"
-                              >
-                                <Palette className="h-2.5 w-2.5 text-white mix-blend-difference opacity-70" />
-                              </button>
-                              <span className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Gaya Layer</span>
+                            <div className="mt-2 flex flex-col gap-2 pl-7 animate-in fade-in slide-in-from-top-1 duration-200">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveStyleLayerID(activeStyleLayerID === l.id ? null : l.id);
+                                  }}
+                                  className="h-5 w-10 bg-slate-100 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-105 active:scale-95 flex items-center justify-center overflow-hidden"
+                                  title="Pengaturan Gaya"
+                                >
+                                  <div className="flex h-full w-full">
+                                    <div className="flex-1 h-full" style={{ backgroundColor: layerStyles[l.id]?.fillColor }} />
+                                    <div className="flex-1 h-full border-l border-white/50" style={{ backgroundColor: layerStyles[l.id]?.strokeColor }} />
+                                  </div>
+                                </button>
+                                <span className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Gaya Layer</span>
+                              </div>
+
+                              {l.category === "Batas Administrasi" && (
+                                <div className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`label-${l.id}`}
+                                    checked={activeLabels.has(l.id)}
+                                    onCheckedChange={() => toggleLabels(l.id)}
+                                    className="h-3 w-3 border-slate-300 data-[state=checked]:bg-[#D4A017] data-[state=checked]:border-[#D4A017]"
+                                  />
+                                  <label htmlFor={`label-${l.id}`} className="text-[9px] font-black uppercase tracking-tighter text-slate-400 cursor-pointer">
+                                    Tampilkan Label Nama
+                                  </label>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -951,6 +1072,58 @@ const PetaInteraktif = () => {
                     );
                   })}
                 </div>
+
+                {/* Individual Color Picker */}
+                <div className="mt-8 border-t border-slate-100/50 pt-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Palette className="h-4 w-4 text-[#1F5E3B]" />
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kustomisasi Warna Wilayah</h4>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <span className="text-[8px] font-black text-[#1F5E3B] uppercase tracking-widest mb-1.5 block">Warna Isi (Fill)</span>
+                      <div className="grid grid-cols-5 gap-2">
+                        {["#1F5E3B", "#D4A017", "#ef4444", "#0ea5e9", "#f59e0b", "#6366f1", "#ec4899", "#22c55e", "#64748b", "#000000"].map(c => {
+                          const pField = selectedFeature.config.primaryField;
+                          const pValue = pField ? selectedFeature.properties[pField] : null;
+                          const fKey = pValue ? `${selectedFeature.config.id}|${pValue}` : null;
+                          const isSelected = fKey && featureStyles[fKey]?.fillColor === c;
+
+                          return (
+                            <button
+                              key={c}
+                              onClick={() => handleFeatureStyleChange('fillColor', c)}
+                              className={`h-7 w-full rounded-lg border-2 transition-all ${isSelected ? "border-[#1F5E3B] scale-110 shadow-md" : "border-white hover:border-slate-200"}`}
+                              style={{ backgroundColor: c }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Warna Garis (Outline)</span>
+                      <div className="grid grid-cols-5 gap-2">
+                        {["#1F5E3B", "#D4A017", "#ef4444", "#0ea5e9", "#f59e0b", "#6366f1", "#ec4899", "#22c55e", "#64748b", "#000000"].map(c => {
+                          const pField = selectedFeature.config.primaryField;
+                          const pValue = pField ? selectedFeature.properties[pField] : null;
+                          const fKey = pValue ? `${selectedFeature.config.id}|${pValue}` : null;
+                          const isSelected = fKey && featureStyles[fKey]?.strokeColor === c;
+
+                          return (
+                            <button
+                              key={c}
+                              onClick={() => handleFeatureStyleChange('strokeColor', c)}
+                              className={`h-7 w-full rounded-lg border-2 transition-all ${isSelected ? "border-slate-500 scale-110 shadow-md" : "border-white hover:border-slate-200"}`}
+                              style={{ backgroundColor: c }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 text-center">
@@ -980,15 +1153,35 @@ const PetaInteraktif = () => {
 
               <div>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-2">Layer: {layers.find(l => l.id === activeStyleLayerID)?.label}</p>
-                <div className="grid grid-cols-5 gap-2">
-                  {["#1F5E3B", "#D4A017", "#ef4444", "#0ea5e9", "#f59e0b", "#6366f1", "#ec4899", "#22c55e", "#64748b", "#000000"].map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setLayerStyles(prev => ({ ...prev, [activeStyleLayerID]: { ...prev[activeStyleLayerID], color: c } }))}
-                      className={`h-8 w-full rounded-lg border-2 transition-all ${layerStyles[activeStyleLayerID]?.color === c ? "border-[#1F5E3B] scale-110 shadow-md" : "border-white hover:border-slate-200"}`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
+
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[8px] font-black text-[#1F5E3B] uppercase tracking-widest mb-1.5 block">Warna Isi (Fill)</span>
+                    <div className="grid grid-cols-5 gap-2">
+                      {["#1F5E3B", "#D4A017", "#ef4444", "#0ea5e9", "#f59e0b", "#6366f1", "#ec4899", "#22c55e", "#64748b", "#000000"].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => handleStyleChange('fillColor', c)}
+                          className={`h-7 w-full rounded-lg border-2 transition-all ${layerStyles[activeStyleLayerID]?.fillColor === c ? "border-[#1F5E3B] scale-110 shadow-md" : "border-white hover:border-slate-200"}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Warna Garis (Outline)</span>
+                    <div className="grid grid-cols-5 gap-2">
+                      {["#1F5E3B", "#D4A017", "#ef4444", "#0ea5e9", "#f59e0b", "#6366f1", "#ec4899", "#22c55e", "#64748b", "#000000"].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => handleStyleChange('strokeColor', c)}
+                          className={`h-7 w-full rounded-lg border-2 transition-all ${layerStyles[activeStyleLayerID]?.strokeColor === c ? "border-slate-500 scale-110 shadow-md" : "border-white hover:border-slate-200"}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1036,6 +1229,28 @@ const PetaInteraktif = () => {
           )}
         </div>
       </div>
+      <style>{`
+        .map-label-tooltip {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          color: #1F5E3B !important;
+          font-weight: 900 !important;
+          font-size: 11px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.05em !important;
+          text-shadow: 
+            -1px -1px 0 #fff,  
+             1px -1px 0 #fff,
+            -1px  1px 0 #fff,
+             1px  1px 0 #fff,
+             0 0 5px rgba(255,255,255,0.8) !important;
+          pointer-events: none !important;
+        }
+        .leaflet-tooltip-pane {
+          z-index: 600 !important;
+        }
+      `}</style>
     </Layout>
 
 
