@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Search, Eye } from "lucide-react";
+import { FileText, Download, Search } from "lucide-react";
 
 const DokumenPage = () => {
   const [kategori, setKategori] = useState("Semua");
@@ -73,32 +73,16 @@ const DokumenPage = () => {
                     <h3 className="mb-1 text-sm font-semibold leading-snug">{d.judul}</h3>
                     <p className="mb-1 text-xs text-muted-foreground">Tahun: {d.tahun}</p>
                     <p className="mb-4 flex-1 text-xs text-muted-foreground">{d.deskripsi}</p>
-                    <div className="mt-auto grid grid-cols-2 gap-2">
+                    <div className="mt-auto">
                       {d.file ? (
-                        <>
-                          <a href={`/assets/dokumen/${d.file}`} download className="block">
-                            <Button size="sm" variant="outline" className="w-full gap-1 border-primary/20 text-primary hover:bg-primary/5">
-                              <Download className="h-3.5 w-3.5" /> Unduh
-                            </Button>
-                          </a>
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="outline"
-                            className="w-full gap-1"
-                          >
-                            <a
-                              href={`/assets/dokumen/${d.file}?preview=1`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Eye className="h-3.5 w-3.5" /> Pratinjau
-                            </a>
+                        <a href={`/assets/dokumen/${d.file}`} download className="block">
+                          <Button size="sm" className="w-full gap-2 bg-primary hover:bg-primary/90 text-white font-bold">
+                            <Download className="h-4 w-4" /> Unduh Dokumen Resmi
                           </Button>
-                        </>
+                        </a>
                       ) : (
-                        <Button size="sm" variant="outline" className="col-span-2 gap-1">
-                          <Download className="h-3.5 w-3.5" /> Unduh
+                        <Button size="sm" variant="outline" disabled className="w-full gap-2">
+                          <Download className="h-4 w-4" /> File Tidak Tersedia
                         </Button>
                       )}
                     </div>

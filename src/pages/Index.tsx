@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Map, FileText, Layers, Building2, TreePine, FileDown,
   ArrowRight, ShieldCheck, Globe, CheckCircle2, Info, X,
-  ChevronLeft, Eye
+  ChevronLeft
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,7 +94,7 @@ const stats = [
     tahun: "2024-2044",
     nomor: "Perbup No. 23 Tahun 2024",
     fullTitle: "RDTR Kawasan Perkotaan Lasem",
-    fileName: "RDTR Perkotaan Lasem Kab Rembang.pdf",
+    fileName: "RDTR_Perkotaan_Lasem_Kab_Rembang.pdf",
     preview: "/assets/dokumen/RDTR.jpg"
   },
   {
@@ -106,7 +106,7 @@ const stats = [
     tahun: "2023-2043",
     nomor: "Perda No. 2 Tahun 2023",
     fullTitle: "RTRW Kabupaten Rembang",
-    fileName: "RTRW Kabupaten Rembang.pdf",
+    fileName: "RTRW_Kabupaten_Rembang.pdf",
     preview: "/assets/dokumen/RTRW.jpg"
   },
 ];
@@ -503,25 +503,11 @@ const Index = () => {
                                 <FileDown className="h-5 w-5" /> UNDUH DOKUMEN RESMI (PDF)
                               </Button>
                             </a>
-                            <Button
-                              asChild
-                              variant="outline"
-                              className="w-full h-14 border-[#1F5E3B] text-[#1F5E3B] hover:bg-emerald-50 font-black gap-2"
-                            >
-                              <a
-                                href={`/assets/dokumen/${s.fileName}?preview=1`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Eye className="h-5 w-5" /> PRATINJAU DOKUMEN RESMI
-                              </a>
-                            </Button>
                           </div>
                         </div>
                         <a
-                          href={`/assets/dokumen/${s.fileName}?preview=1`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          href={`/assets/dokumen/${s.fileName}`}
+                          download
                           className="relative aspect-[3/4] rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shadow-inner group cursor-pointer"
                         >
                           {s.preview ? (
@@ -534,11 +520,11 @@ const Index = () => {
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
                                 <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-                                  <Eye className="h-6 w-6 text-white" />
+                                  <FileDown className="h-6 w-6 text-white" />
                                 </div>
                               </div>
                               <div className="absolute bottom-4 left-4 right-4">
-                                <p className="text-white text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Preview Dokumen</p>
+                                <p className="text-white text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Unduh Dokumen</p>
                                 <p className="text-white text-sm font-black">{s.label}</p>
                               </div>
                             </>
