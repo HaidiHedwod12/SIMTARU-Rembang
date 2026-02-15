@@ -2,7 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import PageTransition from "./components/PageTransition";
 import Index from "./pages/Index";
 import PetaInteraktif from "./pages/PetaInteraktif";
 import InformasiZonasi from "./pages/InformasiZonasi";
@@ -24,6 +26,104 @@ import ModulePlaceholder from "./pages/admin/ModulePlaceholder";
 
 const queryClient = new QueryClient();
 
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><Dashboard /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/profil"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen Profil" description="Kelola profil daerah, DPUPR, dan Kabupaten." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/peta"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen Peta" description="Kelola layer peta, markers, dan dokumen spasial." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dokumen"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen Dokumen" description="Unggah dan kelola dokumen produk tata ruang." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/zonasi"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen Zonasi" description="Kelola data ITBX dan peraturan zonasi." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/fpr"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen FPR" description="Kelola profil dan agenda Forum Penataan Ruang." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/berita"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen Berita" description="Tulis dan publikasikan berita terbaru." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/agenda"
+          element={
+            <ProtectedRoute allowedRoles={['superadmin']}>
+              <PageTransition><ModulePlaceholder title="Manajemen Agenda" description="Jadwalkan kegiatan kedinasan." /></PageTransition>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Profil Group */}
+        <Route path="/profil/daerah" element={<PageTransition><ProfilDaerah /></PageTransition>} />
+        <Route path="/profil/daerah/:id" element={<PageTransition><KecamatanDetail /></PageTransition>} />
+        <Route path="/profil/dpupr" element={<PageTransition><ProfilDPUPR /></PageTransition>} />
+        <Route path="/profil/kabupaten" element={<PageTransition><ProfilKabupaten /></PageTransition>} />
+
+        <Route path="/peta" element={<PageTransition><PetaInteraktif /></PageTransition>} />
+        <Route path="/dokumen" element={<PageTransition><DokumenPage /></PageTransition>} />
+        <Route path="/zonasi" element={<PageTransition><InformasiZonasi /></PageTransition>} />
+
+        {/* FPR Group */}
+        <Route path="/fpr/profil" element={<PageTransition><ProfilFPR /></PageTransition>} />
+        <Route path="/fpr/agenda" element={<PageTransition><AgendaFPR /></PageTransition>} />
+
+        <Route path="/berita" element={<PageTransition><BeritaPage /></PageTransition>} />
+        <Route path="/agenda" element={<PageTransition><AgendaPage /></PageTransition>} />
+
+        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -31,95 +131,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-
-            {/* Admin Routes */}
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/profil"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen Profil" description="Kelola profil daerah, DPUPR, dan Kabupaten." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/peta"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen Peta" description="Kelola layer peta, markers, dan dokumen spasial." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/dokumen"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen Dokumen" description="Unggah dan kelola dokumen produk tata ruang." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/zonasi"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen Zonasi" description="Kelola data ITBX dan peraturan zonasi." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/fpr"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen FPR" description="Kelola profil dan agenda Forum Penataan Ruang." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/berita"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen Berita" description="Tulis dan publikasikan berita terbaru." />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/agenda"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ModulePlaceholder title="Manajemen Agenda" description="Jadwalkan kegiatan kedinasan." />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Profil Group */}
-            <Route path="/profil/daerah" element={<ProfilDaerah />} />
-            <Route path="/profil/daerah/:id" element={<KecamatanDetail />} />
-            <Route path="/profil/dpupr" element={<ProfilDPUPR />} />
-            <Route path="/profil/kabupaten" element={<ProfilKabupaten />} />
-
-            <Route path="/peta" element={<PetaInteraktif />} />
-            <Route path="/dokumen" element={<DokumenPage />} />
-            <Route path="/zonasi" element={<InformasiZonasi />} />
-
-            {/* FPR Group */}
-            <Route path="/fpr/profil" element={<ProfilFPR />} />
-            <Route path="/fpr/agenda" element={<AgendaFPR />} />
-
-            <Route path="/berita" element={<BeritaPage />} />
-            <Route path="/agenda" element={<AgendaPage />} />
-
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
