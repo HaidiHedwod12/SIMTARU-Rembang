@@ -86,10 +86,12 @@ const KecamatanDetail = () => {
                                     <h3 className="text-2xl font-black text-slate-800">Potensi Spasial</h3>
                                     <Share2 className="h-5 w-5 text-slate-300" />
                                 </div>
-                                <div className="aspect-[21/9] w-full rounded-3xl bg-slate-100 overflow-hidden relative group">
-                                    <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold italic">
-                                        Peta Visualisasi Spasial Kecamatan {kecamatan.name}
-                                    </div>
+                                <div className="aspect-[21/9] w-full rounded-3xl bg-slate-100 overflow-hidden relative group border border-slate-200">
+                                    <img
+                                        src={kecamatan.image}
+                                        alt={`Peta Spasial ${kecamatan.name}`}
+                                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                    />
                                     <div className="absolute inset-0 bg-primary/0 transition-all group-hover:bg-primary/5" />
                                 </div>
                             </div>
@@ -110,25 +112,20 @@ const KecamatanDetail = () => {
                             </div>
 
                             <div className="rounded-[2.5rem] bg-white p-8 shadow-xl border border-white">
-                                <h4 className="text-lg font-black text-slate-800">Kecamatan Lainnya</h4>
-                                <div className="mt-6 space-y-3">
-                                    {KECAMATAN_DATA.filter((k) => k.id !== id).slice(0, 5).map((k) => (
-                                        <Link
-                                            key={k.id}
-                                            to={`/profil/daerah/${k.id}`}
-                                            className="group flex items-center justify-between rounded-2xl p-4 transition-all hover:bg-slate-50"
+                                <h4 className="text-xl font-black text-slate-800">Daftar Desa/Kelurahan</h4>
+                                <div className="mt-6 max-h-[500px] overflow-y-auto pr-4 space-y-2 custom-scrollbar">
+                                    {kecamatan.villages.map((village, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="group flex items-center gap-4 rounded-2xl p-4 bg-slate-50 border border-slate-100 transition-all hover:bg-primary/5 hover:border-primary/20"
                                         >
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-2 w-2 rounded-full bg-primary opacity-0 transition-opacity group-hover:opacity-100" />
-                                                <span className="font-bold text-slate-600 group-hover:text-primary">{k.name}</span>
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-black text-xs">
+                                                {idx + 1}
                                             </div>
-                                            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary" />
-                                        </Link>
+                                            <span className="font-bold text-slate-700 transition-colors group-hover:text-primary">{village}</span>
+                                        </div>
                                     ))}
                                 </div>
-                                <Link to="/profil/daerah" className="mt-8 block text-center text-sm font-black text-primary hover:underline">
-                                    LIHAT SEMUA
-                                </Link>
                             </div>
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import { Target, Users, Landmark, Phone, Mail, User, HardHat, Building2, Droplets, PenTool, LayoutDashboard } from "lucide-react";
+import { Target, Users, Landmark, Phone, Mail, User, HardHat, Building2, Droplets, PenTool, LayoutDashboard, ZoomIn } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -13,37 +13,51 @@ const bidangData = [
     {
         name: "Bina Marga",
         icon: HardHat,
-        kabid: "Sunarto, ST., MT.",
+        kabid: "Nugroho Tri Hutomo, S.T., M.Sc., M.Eng.",
         desc: "Bertanggung jawab atas pembangunan, pemeliharaan, dan peningkatan kualitas jalan serta jembatan di seluruh wilayah kabupaten.",
-        members: ["Seksi Pembangunan Jalan", "Seksi Pemeliharaan Jalan & Jembatan", "Seksi Teknis Bina Marga"]
+        members: ["Perencanaan Teknis & Evaluasi", "Pembangunan Jalan & Jembatan", "Preservasi Jalan & Jembatan"]
     },
     {
-        name: "Penataan Bangunan & Bina Konstruksi",
+        name: "Penataan Bangunan & Bina Jasa Konstruksi",
         icon: Building2,
-        kabid: "Ir. H. Bambang S., MT.",
+        kabid: "Agus Himawan Prasetyo, S.T.",
         desc: "Menangani regulasi bangunan gedung, penataan lingkungan pemukiman, serta pembinaan jasa konstruksi lokal.",
-        members: ["Seksi Penataan Bangunan", "Seksi Penyehatan Lingkungan", "Seksi Pembinaan Konstruksi"]
+        members: ["Penataan Bangunan", "Bina Jasa Konstruksi"]
     },
     {
         name: "Tata Ruang",
         icon: PenTool,
-        kabid: "Endro Wahyudi, ST.",
+        kabid: "Moh Nur Aziz, S.E., M.T., M.Eng.",
         desc: "Mengelola perencanaan tata ruang wilayah, pemanfaatan ruang, serta pengendalian dan pengawasan tata ruang kabupaten.",
-        members: ["Seksi Perencanaan Tata Ruang", "Seksi Pemanfaatan Ruang", "Seksi Pengendalian Ruang"]
+        members: ["Perencanaan Tata Ruang", "Pemanfaatan Tata Ruang", "Pengendalian Pemanfaatan Tata Ruang"]
     },
     {
         name: "Sanitasi & Air Minum",
         icon: Droplets,
-        kabid: "Siti Aminah, ST., M.Eng.",
+        kabid: "Anang Suhartadi, S.Hut, M.Si.",
         desc: "Fokus pada penyediaan sarana air bersih layak minum serta pengelolaan sistem sanitasi dan drainase pemukiman.",
-        members: ["Seksi Air Minum", "Seksi Air Limbah & Persampahan", "Seksi Teknis Sanitasi"]
+        members: ["Seksi Sanitasi", "Seksi Penyediaan Air Minum"]
+    },
+    {
+        name: "Sumber Daya Air",
+        icon: Droplets,
+        kabid: "Alfi Mohamadi, S.T.",
+        desc: "Mengelola sumber daya air, termasuk irigasi, bendungan, dan pengendalian daya rusak air di wilayah Rembang.",
+        members: ["Perencanaan & Pengembangan SDA", "Pembangunan & Pengelolaan SDA", "Operasi & Pemeliharaan SDA"]
     },
     {
         name: "Sekretariat",
         icon: LayoutDashboard,
-        kabid: "Puji Haryono, SH.",
+        kabid: "Budi Priyanggodo, ST (Sekretaris)",
         desc: "Mendukung operasional kedinasan melalui manajemen kepegawaian, keuangan, aset, serta koordinasi umum.",
-        members: ["Sub Bagian Umum & Kepegawaian", "Sub Bagian Keuangan", "Sub Bagian Perencanaan & Evaluasi"]
+        members: ["Sub Bagian Progam & Keuangan", "Sub Bagian Umum & Kepegawaian"]
+    },
+    {
+        name: "UPT Peralatan & Perbengkelan",
+        icon: HardHat,
+        kabid: "Mujiyono, S.T.",
+        desc: "Unit pelaksana teknis yang menangani pengelolaan, pemeliharaan, serta optimalisasi penggunaan alat-alat berat dan perbengkelan dinas.",
+        members: ["Pengelolaan Alat Berat", "Pemeliharaan & Perbengkelan"]
     }
 ];
 
@@ -112,12 +126,35 @@ const ProfilDPUPR = () => {
                                 <Users className="h-8 w-8" />
                                 <h2 className="text-3xl font-bold text-slate-800">Struktur Organisasi</h2>
                             </div>
-                            <div className="group relative aspect-[4/3] overflow-hidden rounded-[2.5rem] bg-slate-100 shadow-xl transition-all hover:shadow-2xl cursor-pointer">
-                                <div className="absolute inset-0 flex items-center justify-center text-slate-400 font-bold italic">
-                                    Bagan Struktur Organisasi
-                                </div>
-                                <div className="absolute inset-0 bg-primary/0 transition-all group-hover:bg-primary/5" />
-                            </div>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <div className="group relative aspect-[4/3] overflow-hidden rounded-[2.5rem] bg-white border border-slate-100 shadow-xl transition-all hover:shadow-2xl cursor-pointer">
+                                        <img
+                                            src="/assets/branding/Struktur%20Organisasi%20DPUPR%20Rembang.jpg"
+                                            alt="Struktur Organisasi DPUPR Rembang"
+                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
+                                        <div className="absolute inset-0 bg-primary/0 transition-all group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                            <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest shadow-xl">
+                                                <ZoomIn className="h-4 w-4" />
+                                                Lihat Besar
+                                            </div>
+                                        </div>
+                                    </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-[95vw] w-fit max-h-[90vh] p-4 rounded-[2rem] border-none overflow-hidden">
+                                    <div className="overflow-auto max-h-[80vh] custom-scrollbar rounded-xl">
+                                        <img
+                                            src="/assets/branding/Struktur%20Organisasi%20DPUPR%20Rembang.jpg"
+                                            alt="Struktur Organisasi DPUPR Rembang Full"
+                                            className="w-full h-auto min-w-[1000px]"
+                                        />
+                                    </div>
+                                    <div className="mt-4 text-center">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gunakan scroll untuk melihat detail bagan</p>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     </div>
 
