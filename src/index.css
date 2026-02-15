@@ -113,26 +113,6 @@
     background-size: 30px 30px;
   }
 
-  .wave-divider {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    overflow: hidden;
-    line-height: 0;
-    transform: rotate(180deg);
-  }
-
-  .wave-divider svg {
-    position: relative;
-    display: block;
-    width: calc(100% + 1.3px);
-    height: 60px;
-  }
-
-  .wave-divider .shape-fill {
-    fill: #f8faf9;
-  }
 }
 
 :root {
