@@ -41,6 +41,17 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         navigate('/login');
     };
 
+    // Filter sidebar links based on role
+    const filteredSidebarLinks = sidebarLinks.filter(link => {
+        if (link.path === '/admin/users' && user?.role !== 'superadmin') return false;
+        return true;
+    });
+
+    // Add User Management link only for superadmin
+    if (user?.role === 'superadmin' && !filteredSidebarLinks.find(l => l.path === '/admin/users')) {
+        filteredSidebarLinks.push({ path: '/admin/users', label: 'Kelola User', icon: Users });
+    }
+
     return (
         <div className="flex min-h-screen bg-slate-50">
             {/* Sidebar */}
@@ -54,15 +65,15 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     </div>
 
                     <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-                        {sidebarLinks.map((link) => {
+                        {filteredSidebarLinks.map((link) => {
                             const isActive = location.pathname === link.path;
                             return (
                                 <Link
                                     key={link.path}
                                     to={link.path}
                                     className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all ${isActive
-                                            ? 'bg-white text-[#1F5E3B] shadow-lg'
-                                            : 'text-white/70 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-white text-[#1F5E3B] shadow-lg'
+                                        : 'text-white/70 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
@@ -79,7 +90,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         <div className="rounded-2xl bg-white/5 p-4 mb-4">
                             <p className="text-[10px] font-black uppercase text-white/40 mb-1">Signed in as</p>
                             <p className="text-sm font-black truncate">{user?.name || 'Admin User'}</p>
-                            <p className="text-[10px] font-bold text-white/60 capitalize">{user?.role}</p>
+                            <p className="text-[10px] font-bold text-white/60 uppercase">{user?.role === 'admin' ? 'ADMIN BIDANG' : user?.role}</p>
                         </div>
                         <Button
                             variant="ghost"

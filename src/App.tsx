@@ -22,6 +22,7 @@ import KecamatanDetail from "./pages/KecamatanDetail";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Dashboard from "./pages/admin/Dashboard";
+import UserManagement from "./pages/admin/UserManagement";
 import ModulePlaceholder from "./pages/admin/ModulePlaceholder";
 
 const queryClient = new QueryClient();
@@ -38,64 +39,72 @@ const AnimatedRoutes = () => {
         <Route
           path="/admin/dashboard"
           element={
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
             <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><Dashboard /></PageTransition>
+              <UserManagement />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/profil"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen Profil" description="Kelola profil daerah, DPUPR, dan Kabupaten." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen Profil" description="Kelola profil daerah, DPUPR, dan Kabupaten." />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/peta"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen Peta" description="Kelola layer peta, markers, dan dokumen spasial." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen Peta" description="Kelola layer peta, markers, dan dokumen spasial." />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/dokumen"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen Dokumen" description="Unggah dan kelola dokumen produk tata ruang." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen Dokumen" description="Unggah dan kelola dokumen produk tata ruang." />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/zonasi"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen Zonasi" description="Kelola data ITBX dan peraturan zonasi." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen Zonasi" description="Kelola data ITBX dan peraturan zonasi." />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/fpr"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen FPR" description="Kelola profil dan agenda Forum Penataan Ruang." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen FPR" description="Kelola profil dan agenda Forum Penataan Ruang." />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/berita"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen Berita" description="Tulis dan publikasikan berita terbaru." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen Berita" description="Tulis dan publikasikan berita terbaru." />
             </ProtectedRoute>
           }
         />
         <Route
           path="/admin/agenda"
           element={
-            <ProtectedRoute allowedRoles={['superadmin']}>
-              <PageTransition><ModulePlaceholder title="Manajemen Agenda" description="Jadwalkan kegiatan kedinasan." /></PageTransition>
+            <ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff']}>
+              <ModulePlaceholder title="Manajemen Agenda" description="Jadwalkan kegiatan kedinasan." />
             </ProtectedRoute>
           }
         />

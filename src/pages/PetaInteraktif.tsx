@@ -90,7 +90,7 @@ const basemaps = [
     shortLabel: "OSM",
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: "© OSM contributors",
-    thumbnail: "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=150&q=80"
+    thumbnail: "/assets/map/OSM.jpg"
   },
   {
     id: "google_road",
@@ -98,7 +98,7 @@ const basemaps = [
     shortLabel: "Maps",
     url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
     attribution: "© Google",
-    thumbnail: "https://images.unsplash.com/photo-1569336415962-a4bd4f79c0f2?auto=format&fit=crop&w=150&q=80"
+    thumbnail: "/assets/map/Maps.jpg"
   },
   {
     id: "google_sat",
@@ -106,7 +106,7 @@ const basemaps = [
     shortLabel: "Satelit",
     url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
     attribution: "© Google",
-    thumbnail: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=150&q=80"
+    thumbnail: "/assets/map/Satellite.jpg"
   },
   {
     id: "google_hybrid",
@@ -114,7 +114,7 @@ const basemaps = [
     shortLabel: "Hybrid",
     url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     attribution: "© Google",
-    thumbnail: "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=150&q=80"
+    thumbnail: "/assets/map/Hybrid.jpg"
   },
 ];
 

@@ -1,4 +1,5 @@
 import AdminLayout from '@/components/admin/AdminLayout';
+import { useAuth } from '@/context/AuthContext';
 import {
     BarChart3,
     Users,
@@ -7,7 +8,8 @@ import {
     MousePointer2,
     Newspaper,
     Calendar,
-    AlertCircle
+    AlertCircle,
+    Shield
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -19,12 +21,28 @@ const stats = [
 ];
 
 const Dashboard = () => {
+    const { user } = useAuth();
+
+    const activityLogs = [
+        { user: 'Budi (Bidang Tata Ruang)', action: 'Menambahkan berita baru', time: '2 Jam yang lalu' },
+        { user: 'Siti (Sekretariat)', action: 'Mengubah dokumen pelayanan', time: '5 Jam yang lalu' },
+        { user: 'Superadmin', action: 'Memperbarui peta interaktif', time: 'Kemarin' },
+    ];
+
     return (
         <AdminLayout>
             <div className="max-w-7xl mx-auto space-y-12">
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Ringkasan Statistik</h1>
-                    <p className="text-slate-500 font-medium">Selamat datang kembali! Berikut adalah ringkasan performa portal hari ini.</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex flex-col gap-2">
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Ringkasan Statistik</h1>
+                        <p className="text-slate-500 font-medium">Selamat datang kembali, <span className="text-primary font-black uppercase">{user?.name}</span>! Berikut adalah ringkasan performa portal hari ini.</p>
+                    </div>
+                    {user?.role === 'superadmin' && (
+                        <div className="flex items-center gap-3 px-6 py-3 bg-amber-50 rounded-2xl border border-amber-100">
+                            <Shield className="h-5 w-5 text-amber-500" />
+                            <span className="text-xs font-black text-amber-900 uppercase tracking-widest leading-none">Akses Penuh Superadmin</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -66,16 +84,12 @@ const Dashboard = () => {
                     </div>
 
                     <div className="rounded-[2.5rem] bg-white p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
-                        <h2 className="text-xl font-black text-slate-800 mb-8">Log Aktivitas Admin</h2>
+                        <h2 className="text-xl font-black text-slate-800 mb-8">Log Aktivitas {user?.role === 'superadmin' ? 'Semua' : 'Internal'}</h2>
                         <div className="space-y-6">
-                            {[
-                                { user: 'Budi (Bidang Tata Ruang)', action: 'Menambahkan berita baru', time: '2 Jam yang lalu' },
-                                { user: 'Siti (Sekretariat)', action: 'Mengubah dokumen pelayanan', time: '5 Jam yang lalu' },
-                                { user: 'Superadmin', action: 'Memperbarui peta interaktif', time: 'Kemarin' },
-                            ].map((log, i) => (
+                            {activityLogs.map((log, i) => (
                                 <div key={i} className="flex gap-4 items-start">
                                     <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                                        <User className="h-5 w-5 text-slate-400" />
+                                        <Users className="h-5 w-5 text-slate-400" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-black text-slate-700">{log.user}</p>

@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, LogIn, ChevronDown } from "lucide-react";
+import { Menu, X, LogIn, ChevronDown, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-kabupaten-rembang.png";
+import { useAuth } from "@/context/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,13 +38,14 @@ const navLinks = [
 ];
 
 const Navbar = () => {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
   return (
     <header className="sticky top-0 z-50 border-b border-primary/20 bg-card/70 shadow-lg backdrop-blur-xl">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4">
-        <Link to="/" className="group flex items-center gap-2 transition-all hover:opacity-90">
+      <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between gap-8 px-6">
+        <Link to="/" className="group flex flex-shrink-0 items-center gap-3 transition-all hover:opacity-90">
           <div className="flex-shrink-0 relative">
             <div className="absolute inset-0 rounded-full bg-primary/20 blur-md group-hover:bg-primary/30 transition-all" />
             <img src={logo} alt="Logo" className="relative h-9 w-9 object-contain drop-shadow-[0_0_8px_rgba(34,197,94,0.3)] transition-transform duration-500 group-hover:scale-110 md:h-11 md:w-11" />
@@ -59,7 +61,7 @@ const Navbar = () => {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-0.5 md:flex lg:gap-1">
+        <nav className="hidden items-center gap-0 md:flex lg:gap-0.5">
           {navLinks.map((l) => {
             const isActive = location.pathname === l.path || location.pathname.startsWith(l.path + "/");
 
@@ -110,13 +112,23 @@ const Navbar = () => {
             );
           })}
           <div className="ml-1 h-6 w-[1px] bg-border/50" />
-          <Link to="/login" className="flex-shrink-0">
-            <Button size="sm" className="ml-2 group relative overflow-hidden rounded-xl bg-primary px-5 font-bold text-white transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] whitespace-nowrap">
-              <span className="relative z-10 flex items-center gap-2">
-                <LogIn className="h-4 w-4" /> Masuk
-              </span>
-            </Button>
-          </Link>
+          {user ? (
+            <Link to="/admin/dashboard" className="flex-shrink-0">
+              <Button size="sm" className="ml-2 group relative overflow-hidden rounded-xl bg-[#1F5E3B] px-5 font-bold text-white transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(31,94,59,0.4)] whitespace-nowrap">
+                <span className="relative z-10 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" /> Dashboard
+                </span>
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/login" className="flex-shrink-0">
+              <Button size="sm" className="ml-2 group relative overflow-hidden rounded-xl bg-primary px-5 font-bold text-white transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] whitespace-nowrap">
+                <span className="relative z-10 flex items-center gap-2">
+                  <LogIn className="h-4 w-4" /> Masuk
+                </span>
+              </Button>
+            </Link>
+          )}
         </nav>
 
         {/* Mobile toggle */}
@@ -167,11 +179,19 @@ const Navbar = () => {
                 )}
               </div>
             ))}
-            <Link to="/login" onClick={() => setOpen(false)} className="mt-4">
-              <Button size="lg" className="w-full gap-2 rounded-xl font-bold">
-                <LogIn className="h-4 w-4" /> Masuk ke Sistem
-              </Button>
-            </Link>
+            {user ? (
+              <Link to="/admin/dashboard" onClick={() => setOpen(false)} className="mt-4">
+                <Button size="lg" className="w-full gap-2 rounded-xl font-bold bg-[#1F5E3B] hover:bg-[#1a5032] text-white">
+                  <ShieldCheck className="h-4 w-4" /> Kembali ke Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login" onClick={() => setOpen(false)} className="mt-4">
+                <Button size="lg" className="w-full gap-2 rounded-xl font-bold">
+                  <LogIn className="h-4 w-4" /> Masuk ke Sistem
+                </Button>
+              </Link>
+            )}
           </div>
         </nav>
       )}
