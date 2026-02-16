@@ -416,14 +416,15 @@ const PetaInteraktif = () => {
             if (activeLabels.has(layerConfig.id) && layerConfig.primaryField) {
               const name = feature.properties[layerConfig.primaryField];
               if (name) {
-                const center = layer.getCenter ? layer.getCenter() : layer.getBounds().getCenter();
+                // Always use bounds center for consistent positioning
+                const center = layer.getBounds().getCenter();
                 layer.bindTooltip(name, {
                   permanent: true,
                   direction: 'center',
                   className: 'map-label-tooltip',
                   offset: [0, 0]
                 });
-                // Force open at centroid
+                // Force open at bounds center
                 layer.openTooltip(center);
               }
             }
@@ -492,7 +493,7 @@ const PetaInteraktif = () => {
         if (shouldShow && config.primaryField) {
           const name = layer.feature.properties[config.primaryField];
           if (name) {
-            const center = layer.getCenter ? layer.getCenter() : layer.getBounds().getCenter();
+            const center = layer.getBounds().getCenter();
             if (!layer.getTooltip()) {
               layer.bindTooltip(name, {
                 permanent: true,
