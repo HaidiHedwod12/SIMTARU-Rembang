@@ -152,6 +152,11 @@ const PetaInteraktif = () => {
   const [printPanelOpen, setPrintPanelOpen] = useState(false);
   const [mapTitle, setMapTitle] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isSelectingArea, setIsSelectingArea] = useState(false);
+  const [selectionBox, setSelectionBox] = useState<{ startX: number, startY: number, endX: number, endY: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [capturedAreaImage, setCapturedAreaImage] = useState<string | null>(null);
+
   const lastSelectedLayerRef = useRef<any>(null);
   const resetSelectionRef = useRef<(() => void) | null>(null);
 
@@ -239,6 +244,11 @@ const PetaInteraktif = () => {
         zoom: 12,
         maxZoom: 22,
         zoomControl: true,
+        preferCanvas: true, // Force canvas renderer for better capture alignment
+        zoomSnap: 0, // Allow fractional zoom levels for extreme smoothness
+        zoomDelta: 0.25, // Smaller steps for zoom buttons
+        wheelPxPerZoomLevel: 120, // Slower mouse wheel zoom
+        wheelDebounceTime: 40, // More responsive wheel but smoother
       });
 
       // Scale bar
@@ -750,6 +760,53 @@ const PetaInteraktif = () => {
     }
   };
 
+  const captureSelectedArea = async () => {
+    if (!selectionBox || !mapRef.current) return;
+
+    setIsPrinting(true);
+    const { startX, startY, endX, endY } = selectionBox;
+    const x = Math.min(startX, endX);
+    const y = Math.min(startY, endY);
+    const width = Math.abs(endX - startX);
+    const height = Math.abs(endY - startY);
+
+    if (width < 10 || height < 10) {
+      setIsSelectingArea(false);
+      setSelectionBox(null);
+      setIsPrinting(false);
+      return;
+    }
+
+    try {
+      // Hide controls for capture
+      const controls = mapRef.current.querySelectorAll('.leaflet-control-container');
+      controls.forEach((c: any) => c.style.display = 'none');
+
+      const canvas = await html2canvas(mapRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        scale: 4, // Higher res for selection
+        x: x,
+        y: y,
+        width: width,
+        height: height
+      });
+
+      controls.forEach((c: any) => c.style.display = '');
+
+      setCapturedAreaImage(canvas.toDataURL('image/jpeg', 0.9));
+      setIsSelectingArea(false);
+      setSelectionBox(null);
+      setPrintPanelOpen(true);
+    } catch (err) {
+      console.error("Capture failed", err);
+      toast({ title: "Gagal", description: "Terjadi kesalahan saat menangkap area peta.", variant: "destructive" });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
 
 
   const handleDownloadLayer = (layer: any) => {
@@ -766,28 +823,17 @@ const PetaInteraktif = () => {
   };
 
   const handlePrint = async (format: 'pdf' | 'jpg') => {
-    if (!mapRef.current) return;
+    if (!capturedAreaImage) return;
     setIsPrinting(true);
     toast({ title: "Memproses Peta", description: "Sedang menyiapkan layout peta..." });
 
     try {
-      // 1. Capture Map
-      // Force map invalidation to ensure tiles are rendered
-      if (mapInstance.current) mapInstance.current.invalidateSize();
-
-      const mapCanvas = await html2canvas(mapRef.current, {
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        scale: 2 // High res
-      });
-
       // 2. Create Layout Container (Invisible)
       const container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.top = '-9999px';
       container.style.left = '-9999px';
-      container.style.width = '1200px'; // Fixed width for A4 landscape ratio approx
+      container.style.width = '1200px';
       container.style.height = '800px';
       container.style.backgroundColor = 'white';
       container.style.display = 'flex';
@@ -796,13 +842,26 @@ const PetaInteraktif = () => {
 
       // 3. Build Layout Content
       // Left: Map
-      const mapImg = document.createElement('img');
-      mapImg.src = mapCanvas.toDataURL('image/jpeg', 0.9);
-      mapImg.style.width = '75%';
-      mapImg.style.height = '100%';
-      mapImg.style.objectFit = 'cover';
-      container.appendChild(mapImg);
+      const mapWrapper = document.createElement('div');
+      mapWrapper.style.width = '75%';
+      mapWrapper.style.height = '100%';
+      mapWrapper.style.padding = '20px';
+      mapWrapper.style.backgroundColor = 'white';
+      mapWrapper.style.display = 'flex';
+      mapWrapper.style.alignItems = 'center';
+      mapWrapper.style.justifyContent = 'center';
+      container.appendChild(mapWrapper);
 
+      const mapImg = document.createElement('img');
+      mapImg.src = capturedAreaImage;
+      mapImg.style.width = '100%';
+      mapImg.style.height = '100%';
+      mapImg.style.objectFit = 'contain'; // Better for custom selections
+      mapImg.style.border = '2px solid #1F5E3B';
+      mapImg.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+      mapWrapper.appendChild(mapImg);
+
+      // (Rest of the print logic remains similar, using capturedAreaImage)
       // Right: Sidebar
       const sidebar = document.createElement('div');
       sidebar.style.width = '25%';
@@ -822,9 +881,10 @@ const PetaInteraktif = () => {
       header.style.paddingBottom = '15px';
 
       const logo = document.createElement('img');
-      logo.src = '/assets/branding/Kabupaten Rembang.jpg'; // Path to logo
-      logo.style.height = '60px'; // Adjust based on your logo aspect ratio
-      logo.style.marginBottom = '10px';
+      logo.src = '/og-image.png'; // Updated to og-image.png from public folder
+      logo.style.height = '80px'; // Slightly larger for clarity
+      logo.style.display = 'block';
+      logo.style.margin = '0 auto 15px auto'; // Centered with bottom margin
       header.appendChild(logo);
 
       const title1 = document.createElement('h3');
@@ -869,12 +929,18 @@ const PetaInteraktif = () => {
         const l = layers.find(lay => lay.id === id);
         const style = layerStyles[id];
         if (l && style) {
+          const isLine = l.type === 'line';
           legendHtml += `
-            <div style="display: flex; align-items: flex-start; gap: 8px;">
-               <div style="width: 20px; height: 12px; background-color: ${style.fillColor}; border: 1px solid ${style.strokeColor}; flex-shrink: 0; margin-top: 2px;"></div>
-               <div>
-                  <div style="font-size: 10px; font-weight: bold; color: #334155;">${l.label}</div>
-                  <div style="font-size: 8px; color: #64748b;">${l.category}</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+               ${isLine ?
+              `<div style="width: 20px; height: 0; border-top: 3px solid ${style.strokeColor}; flex-shrink: 0;"></div>` :
+              `<div style="width: 20px; height: 12px; border: 1px solid ${style.strokeColor}; flex-shrink: 0; position: relative; overflow: hidden; display: flex;">
+                    <div style="position: absolute; inset: 0; background-color: ${style.fillColor}; opacity: ${style.opacity};"></div>
+                  </div>`
+            }
+               <div style="display: flex; flex-direction: column;">
+                  <div style="font-size: 11px; font-weight: bold; color: #334155; line-height: 1;">${l.label}</div>
+                  <div style="font-size: 8px; color: #64748b; margin-top: 2px;">${l.category}</div>
                </div>
             </div>
           `;
@@ -900,7 +966,9 @@ const PetaInteraktif = () => {
 
       // 4. Capture Final Layout
       const finalCanvas = await html2canvas(container, {
-        scale: 2 // High Quality
+        scale: 3, // Very High Quality for final output
+        useCORS: true,
+        allowTaint: true
       });
 
       // 5. Save Output
@@ -1027,6 +1095,52 @@ const PetaInteraktif = () => {
           {/* Map */}
           <div ref={mapRef} className="h-full w-full z-0" />
 
+          {/* Area Selection Overlay */}
+          {isSelectingArea && (
+            <div
+              className="absolute inset-0 z-[10002] cursor-crosshair bg-black/10"
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                setIsDragging(true);
+                setSelectionBox({ startX: x, startY: y, endX: x, endY: y });
+              }}
+              onMouseMove={(e) => {
+                if (!isDragging || !selectionBox) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                setSelectionBox(prev => prev ? { ...prev, endX: x, endY: y } : null);
+              }}
+              onMouseUp={() => {
+                setIsDragging(false);
+                captureSelectedArea();
+              }}
+            >
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#1F5E3B] text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-2xl animate-bounce">
+                Tarik Mouse untuk Memilih Area
+              </div>
+
+              {selectionBox && (
+                <div
+                  className="absolute border-2 border-[#D4A017] bg-[#D4A017]/10"
+                  style={{
+                    left: Math.min(selectionBox.startX, selectionBox.endX),
+                    top: Math.min(selectionBox.startY, selectionBox.endY),
+                    width: Math.abs(selectionBox.endX - selectionBox.startX),
+                    height: Math.abs(selectionBox.endY - selectionBox.startY),
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.4)'
+                  }}
+                >
+                  <div className="absolute -top-6 left-0 text-[10px] font-bold text-[#D4A017] bg-white px-2 py-0.5 rounded shadow-sm">
+                    {Math.round(Math.abs(selectionBox.endX - selectionBox.startX))} x {Math.round(Math.abs(selectionBox.endY - selectionBox.startY))} px
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Context Menu */}
           {contextMenu && (
             <div
@@ -1078,8 +1192,8 @@ const PetaInteraktif = () => {
           )}
 
           {/* Top bar (Shifted right with ml-12 and updated logic) */}
-          <div className="absolute left-4 right-4 top-4 z-[1001] flex items-center justify-between gap-2">
-            <div className="flex w-full max-w-sm ml-12 items-center gap-2 bg-white/90 pl-1 pr-4 py-1 shadow-xl backdrop-blur-md rounded-2xl border border-white/20">
+          <div className="absolute left-4 right-4 top-4 z-[1001] flex items-center justify-between gap-2 pointer-events-none">
+            <div className="flex w-full max-w-sm ml-12 items-center gap-2 bg-white/90 pl-1 pr-4 py-1 shadow-xl backdrop-blur-md rounded-2xl border border-white/20 pointer-events-auto">
               <Button
                 variant="ghost"
                 size="icon"
@@ -1097,7 +1211,7 @@ const PetaInteraktif = () => {
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pointer-events-auto">
               <div className="flex bg-white/90 p-1 shadow-xl backdrop-blur-md rounded-2xl border border-white/20 gap-1">
                 <Button
                   size="icon"
@@ -1152,16 +1266,25 @@ const PetaInteraktif = () => {
               </Button>
               <Button
                 size="icon"
-                variant={printPanelOpen ? "default" : "outline"}
+                variant={printPanelOpen || isSelectingArea ? "default" : "outline"}
                 onClick={() => {
-                  setPrintPanelOpen(!printPanelOpen);
-                  setDownloadPanelOpen(false);
-                  setInfoPanelOpen(false);
+                  if (printPanelOpen) {
+                    setPrintPanelOpen(false);
+                    setCapturedAreaImage(null);
+                  } else {
+                    setIsSelectingArea(true);
+                    setDownloadPanelOpen(false);
+                    setInfoPanelOpen(false);
+                    toast({
+                      title: "Mode Seleksi Cetak",
+                      description: "Klik dan tarik mouse pada area peta yang ingin dicetak."
+                    });
+                  }
                 }}
-                className={`h-12 w-12 rounded-2xl shadow-xl border-white/20 transition-all ${printPanelOpen ? "bg-[#1F5E3B] text-white" : "bg-white/90 text-slate-700 hover:text-[#1F5E3B]"}`}
+                className={`h-12 w-12 rounded-2xl shadow-xl border-white/20 transition-all ${(printPanelOpen || isSelectingArea) ? "bg-[#1F5E3B] text-white" : "bg-white/90 text-slate-700 hover:text-[#1F5E3B]"}`}
                 title="Cetak Peta"
               >
-                <Printer className="h-5 w-5" />
+                {isSelectingArea ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
               </Button>
             </div>
           </div>
