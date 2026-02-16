@@ -8,6 +8,8 @@ import {
 import Layout from "@/components/Layout";
 import "leaflet/dist/leaflet.css";
 import { useToast } from "@/hooks/use-toast";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const layers = [
   {
@@ -146,6 +148,10 @@ const PetaInteraktif = () => {
 
   const [selectedFeature, setSelectedFeature] = useState<{ properties: any, layer: any, config: any } | null>(null);
   const [infoPanelOpen, setInfoPanelOpen] = useState(false);
+  const [downloadPanelOpen, setDownloadPanelOpen] = useState(false);
+  const [printPanelOpen, setPrintPanelOpen] = useState(false);
+  const [mapTitle, setMapTitle] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
   const lastSelectedLayerRef = useRef<any>(null);
   const resetSelectionRef = useRef<(() => void) | null>(null);
 
@@ -257,6 +263,8 @@ const PetaInteraktif = () => {
         if (resetSelectionRef.current) {
           resetSelectionRef.current();
         }
+        setDownloadPanelOpen(false); // Close download panel on map click
+        setPrintPanelOpen(false); // Close print panel on map click
       });
 
       mapInstance.current = map;
@@ -301,9 +309,11 @@ const PetaInteraktif = () => {
     if (!containerRef.current) return;
 
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
+      if (containerRef.current) {
+        containerRef.current.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      }
     } else {
       document.exitFullscreen();
     }
@@ -740,6 +750,189 @@ const PetaInteraktif = () => {
     }
   };
 
+
+
+  const handleDownloadLayer = (layer: any) => {
+    const link = document.createElement('a');
+    link.href = `/data/map/${layer.file}`;
+    link.download = layer.file;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: "Memulai Unduhan",
+      description: `Mengunduh file ${layer.label}...`,
+    });
+  };
+
+  const handlePrint = async (format: 'pdf' | 'jpg') => {
+    if (!mapRef.current) return;
+    setIsPrinting(true);
+    toast({ title: "Memproses Peta", description: "Sedang menyiapkan layout peta..." });
+
+    try {
+      // 1. Capture Map
+      // Force map invalidation to ensure tiles are rendered
+      if (mapInstance.current) mapInstance.current.invalidateSize();
+
+      const mapCanvas = await html2canvas(mapRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        scale: 2 // High res
+      });
+
+      // 2. Create Layout Container (Invisible)
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.top = '-9999px';
+      container.style.left = '-9999px';
+      container.style.width = '1200px'; // Fixed width for A4 landscape ratio approx
+      container.style.height = '800px';
+      container.style.backgroundColor = 'white';
+      container.style.display = 'flex';
+      container.style.fontFamily = 'Arial, sans-serif';
+      document.body.appendChild(container);
+
+      // 3. Build Layout Content
+      // Left: Map
+      const mapImg = document.createElement('img');
+      mapImg.src = mapCanvas.toDataURL('image/jpeg', 0.9);
+      mapImg.style.width = '75%';
+      mapImg.style.height = '100%';
+      mapImg.style.objectFit = 'cover';
+      container.appendChild(mapImg);
+
+      // Right: Sidebar
+      const sidebar = document.createElement('div');
+      sidebar.style.width = '25%';
+      sidebar.style.height = '100%';
+      sidebar.style.padding = '20px';
+      sidebar.style.borderLeft = '4px solid #1F5E3B';
+      sidebar.style.backgroundColor = '#f8fafc';
+      sidebar.style.display = 'flex';
+      sidebar.style.flexDirection = 'column';
+      sidebar.style.gap = '20px';
+      container.appendChild(sidebar);
+
+      // Header (Logos & Title)
+      const header = document.createElement('div');
+      header.style.textAlign = 'center';
+      header.style.borderBottom = '2px solid #e2e8f0';
+      header.style.paddingBottom = '15px';
+
+      const logo = document.createElement('img');
+      logo.src = '/assets/branding/Kabupaten Rembang.jpg'; // Path to logo
+      logo.style.height = '60px'; // Adjust based on your logo aspect ratio
+      logo.style.marginBottom = '10px';
+      header.appendChild(logo);
+
+      const title1 = document.createElement('h3');
+      title1.innerText = "PEMERINTAH KABUPATEN REMBANG";
+      title1.style.fontSize = '12px';
+      title1.style.fontWeight = 'bold';
+      title1.style.margin = '0 0 4px 0';
+      title1.style.color = '#334155';
+      header.appendChild(title1);
+
+      const title2 = document.createElement('h2');
+      title2.innerText = "SIMTARU 2026";
+      title2.style.fontSize = '16px';
+      title2.style.fontWeight = '900';
+      title2.style.margin = '0';
+      title2.style.color = '#1F5E3B';
+      title2.style.letterSpacing = '1px';
+      header.appendChild(title2);
+
+      sidebar.appendChild(header);
+
+      // Map Title
+      const mapTitleEl = document.createElement('div');
+      mapTitleEl.innerHTML = `
+        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">JUDUL PETA</div>
+        <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 4px; line-height: 1.4;">${mapTitle || "PETA TANPA JUDUL"}</div>
+      `;
+      sidebar.appendChild(mapTitleEl);
+
+      // Legend
+      const legendEl = document.createElement('div');
+      legendEl.style.flex = '1';
+      legendEl.style.overflow = 'hidden';
+      legendEl.style.display = 'flex';
+      legendEl.style.flexDirection = 'column';
+
+      let legendHtml = `<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: bold; margin-bottom: 8px;">LEGENDA / KETERANGAN</div>`;
+      legendHtml += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+
+      // Iterate active layers for legend
+      activeL.forEach(id => {
+        const l = layers.find(lay => lay.id === id);
+        const style = layerStyles[id];
+        if (l && style) {
+          legendHtml += `
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+               <div style="width: 20px; height: 12px; background-color: ${style.fillColor}; border: 1px solid ${style.strokeColor}; flex-shrink: 0; margin-top: 2px;"></div>
+               <div>
+                  <div style="font-size: 10px; font-weight: bold; color: #334155;">${l.label}</div>
+                  <div style="font-size: 8px; color: #64748b;">${l.category}</div>
+               </div>
+            </div>
+          `;
+        }
+      });
+      legendHtml += `</div>`;
+      legendEl.innerHTML = legendHtml;
+      sidebar.appendChild(legendEl);
+
+      // Footer (Source & Date)
+      const footer = document.createElement('div');
+      footer.style.borderTop = '2px solid #e2e8f0';
+      footer.style.paddingTop = '15px';
+      footer.style.fontSize = '9px';
+      footer.style.color = '#64748b';
+
+      const date = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      footer.innerHTML = `
+        <div style="margin-bottom: 4px;"><strong>SUMBER:</strong> SIMTARU Kab. Rembang</div>
+        <div><strong>DICETAK:</strong> ${date}</div>
+      `;
+      sidebar.appendChild(footer);
+
+      // 4. Capture Final Layout
+      const finalCanvas = await html2canvas(container, {
+        scale: 2 // High Quality
+      });
+
+      // 5. Save Output
+      if (format === 'jpg') {
+        const link = document.createElement('a');
+        link.download = `Peta-SIMTARU-${Date.now()}.jpg`;
+        link.href = finalCanvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+      } else {
+        // PDF
+        const imgData = finalCanvas.toDataURL('image/jpeg', 0.9);
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'px',
+          format: [1200, 800] // Match container size
+        });
+        pdf.addImage(imgData, 'JPEG', 0, 0, 1200, 800);
+        pdf.save(`Peta-SIMTARU-${Date.now()}.pdf`);
+      }
+
+      // Cleanup
+      document.body.removeChild(container);
+      toast({ title: "Berhasil", description: "Peta berhasil dicetak." });
+
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Gagal", description: "Terjadi kesalahan saat mencetak peta.", variant: "destructive" });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   return (
     <Layout hideFooter hideNavbar={isFullscreen || !isNavbarVisible}>
       <div ref={containerRef} className={`relative flex transition-all duration-200 ${(isFullscreen || !isNavbarVisible) ? "h-screen w-screen bg-slate-100" : "h-[calc(100vh-64px)]"}`}>
@@ -944,11 +1137,31 @@ const PetaInteraktif = () => {
               >
                 {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
               </Button>
-              <Button size="icon" variant="outline" className="h-12 w-12 rounded-2xl bg-white/90 shadow-xl border-white/20 hover:text-[#1F5E3B]">
-                <Printer className="h-5 w-5" />
-              </Button>
-              <Button size="icon" variant="outline" className="h-12 w-12 rounded-2xl bg-white/90 shadow-xl border-white/20 hover:text-[#1F5E3B]">
+
+              <Button
+                size="icon"
+                variant={downloadPanelOpen ? "default" : "outline"}
+                onClick={() => {
+                  setDownloadPanelOpen(!downloadPanelOpen);
+                  setInfoPanelOpen(false); // Close info panel if open
+                }}
+                className={`h-12 w-12 rounded-2xl shadow-xl border-white/20 transition-all ${downloadPanelOpen ? "bg-[#1F5E3B] text-white" : "bg-white/90 text-slate-700 hover:text-[#1F5E3B]"}`}
+                title="Download Layer"
+              >
                 <Download className="h-5 w-5" />
+              </Button>
+              <Button
+                size="icon"
+                variant={printPanelOpen ? "default" : "outline"}
+                onClick={() => {
+                  setPrintPanelOpen(!printPanelOpen);
+                  setDownloadPanelOpen(false);
+                  setInfoPanelOpen(false);
+                }}
+                className={`h-12 w-12 rounded-2xl shadow-xl border-white/20 transition-all ${printPanelOpen ? "bg-[#1F5E3B] text-white" : "bg-white/90 text-slate-700 hover:text-[#1F5E3B]"}`}
+                title="Cetak Peta"
+              >
+                <Printer className="h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -1136,6 +1349,151 @@ const PetaInteraktif = () => {
           )}
         </div>
 
+        {/* Floating Download Panel */}
+        <div
+          className={`absolute right-6 top-24 z-[1005] w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${downloadPanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          style={{ maxHeight: "calc(100% - 140px)" }}
+        >
+          <div className="flex h-full max-h-[inherit] flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100/50 p-5">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-[#1F5E3B] text-white shadow-lg">
+                  <Download className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-[#1F5E3B]">Download Layer</h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Unduh Data Spasial</p>
+                </div>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setDownloadPanelOpen(false)}
+                className="rounded-xl h-8 w-8 hover:bg-slate-100 transition-all"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar bg-slate-50/50">
+              <div className="space-y-2">
+                {layers.map((layer) => (
+                  <div key={layer.id} className="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-100 hover:shadow-md hover:border-[#1F5E3B]/30 transition-all group">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-[#1F5E3B]/10 group-hover:text-[#1F5E3B] transition-colors">
+                        <Layers className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-700 group-hover:text-[#1F5E3B] transition-colors">{layer.label}</p>
+                        <p className="text-[9px] text-slate-400 font-medium">{layer.category}</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleDownloadLayer(layer)}
+                      className="h-8 w-8 p-0 rounded-xl bg-slate-100 text-slate-600 hover:bg-[#1F5E3B] hover:text-white transition-all shadow-sm"
+                      title={`Download ${layer.label}`}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 text-center">
+              <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+                Format: GeoJSON (.json)
+              </p>
+            </div>
+          </div>
+        </div>
+
+
+
+        {/* Floating Print Panel */}
+        <div
+          className={`absolute right-6 top-24 z-[1005] w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${printPanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          style={{ maxHeight: "calc(100% - 140px)" }}
+        >
+          <div className="flex h-full max-h-[inherit] flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100/50 p-5">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-[#1F5E3B] text-white shadow-lg">
+                  {isPrinting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
+                </div>
+                <div>
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-[#1F5E3B]">Cetak Peta</h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Export PDF / JPG</p>
+                </div>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setPrintPanelOpen(false)}
+                className="rounded-xl h-8 w-8 hover:bg-slate-100 transition-all"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+              <div className="space-y-6">
+
+                <div className="space-y-3">
+                  <label className="text-[9px] font-black text-[#1F5E3B] uppercase tracking-widest block">Judul Peta</label>
+                  <Input
+                    placeholder="Contoh: Peta Rencana Jalan Kecamatan Rembang"
+                    value={mapTitle}
+                    onChange={(e) => setMapTitle(e.target.value)}
+                    className="h-11 rounded-xl bg-slate-50 border-slate-200 focus:ring-[#1F5E3B] text-xs font-medium"
+                  />
+                  <p className="text-[9px] text-slate-400 leading-relaxed">
+                    Judul ini akan ditampilkan pada layout cetak peta di bagian legenda.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Format Export</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      disabled={isPrinting}
+                      onClick={() => handlePrint('jpg')}
+                      className="h-16 flex flex-col gap-1 rounded-2xl border-2 hover:border-[#1F5E3B]/50 hover:bg-[#1F5E3B]/5"
+                    >
+                      <span className="text-xl font-black text-slate-700">JPG</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">Gambar</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={isPrinting}
+                      onClick={() => handlePrint('pdf')}
+                      className="h-16 flex flex-col gap-1 rounded-2xl border-2 hover:border-[#1F5E3B]/50 hover:bg-[#1F5E3B]/5"
+                    >
+                      <span className="text-xl font-black text-slate-700">PDF</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">Dokumen</span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                  <div className="flex items-start gap-3">
+                    <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-amber-600 font-bold text-xs">!</span>
+                    </div>
+                    <p className="text-[10px] text-amber-800 leading-relaxed font-medium">
+                      Proses export mengambil tangkapan layar area peta saat ini. Pastikan area yang diinginkan sudah terlihat dengan jelas.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
         {/* Floating Style Editor Panel */}
         <div
           className={`absolute left-[300px] top-4 z-[1010] w-64 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-white/20 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] ${activeStyleLayerID ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"}`}
@@ -1230,6 +1588,7 @@ const PetaInteraktif = () => {
           )}
         </div>
       </div>
+
       <style>{`
         .map-label-tooltip {
           background: transparent !important;
@@ -1240,12 +1599,12 @@ const PetaInteraktif = () => {
           font-size: 11px !important;
           text-transform: uppercase !important;
           letter-spacing: 0.05em !important;
-          text-shadow: 
-            -1px -1px 0 #fff,  
-             1px -1px 0 #fff,
+          text-shadow:
+            -1px -1px 0 #fff,
+            1px -1px 0 #fff,
             -1px  1px 0 #fff,
-             1px  1px 0 #fff,
-             0 0 5px rgba(255,255,255,0.8) !important;
+            1px  1px 0 #fff,
+            0 0 5px rgba(255,255,255,0.8) !important;
           pointer-events: none !important;
         }
         .leaflet-tooltip-pane {
@@ -1253,8 +1612,6 @@ const PetaInteraktif = () => {
         }
       `}</style>
     </Layout>
-
-
   );
 };
 
