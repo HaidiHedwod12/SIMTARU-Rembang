@@ -21,7 +21,7 @@ const ProfilKabupaten = () => {
                     <div className="absolute bottom-10 left-0 w-full animate-in fade-in slide-in-from-bottom-5 duration-700">
                         <div className="mx-auto max-w-7xl px-4">
                             <span className="text-xs font-black uppercase tracking-[0.4em] text-primary mb-4 block">Profil Daerah</span>
-                            <h1 className="text-5xl font-black text-white md:text-8xl tracking-tight">KABUPATEN<br />REMBANG</h1>
+                            <h1 className="text-4xl sm:text-5xl font-black text-white md:text-8xl tracking-tight leading-tight">KABUPATEN<br />REMBANG</h1>
                             <p className="mt-6 max-w-2xl text-xl font-medium text-white/80 border-l-4 border-primary pl-6">"The Cola of Java" — Kota Garam yang penuh sejarah dan potensi masa depan.</p>
                         </div>
                     </div>
@@ -34,7 +34,7 @@ const ProfilKabupaten = () => {
                             <div className="flex flex-col lg:flex-row items-center gap-12 p-8 md:p-12">
                                 <Dialog>
                                     <DialogTrigger asChild>
-                                        <div className="relative h-80 w-full lg:w-[28rem] shrink-0 overflow-hidden rounded-[2.5rem] bg-slate-50 shadow-inner cursor-zoom-in group/img">
+                                        <div className="relative h-64 md:h-80 w-full lg:w-[28rem] shrink-0 overflow-hidden rounded-[2.5rem] bg-slate-50 shadow-inner cursor-zoom-in group/img">
                                             <img
                                                 src="/assets/branding/Bupati%20Wabup%20Rembang.jpg"
                                                 alt="Bupati & Wakil Bupati Rembang"

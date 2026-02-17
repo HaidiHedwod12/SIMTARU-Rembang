@@ -107,8 +107,8 @@ const InformasiZonasi = () => {
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest backdrop-blur-md border border-white/20">
                   <ShieldCheck className="h-3 w-3 text-[#D4A017]" /> Regulasi Tata Ruang Resmi
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase">Peruntukkan Tata Ruang</h1>
-                <p className="text-white/70 font-medium max-w-2xl">
+                <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-[1.1]">Peruntukkan Tata Ruang</h1>
+                <p className="text-white/70 font-medium max-w-2xl text-sm md:text-base">
                   Informasi detail mengenai regulasi pemanfaatan ruang, jenis kegiatan yang diperbolehkan, bersyarat, maupun dilarang di Kabupaten Rembang.
                 </p>
               </div>
@@ -127,8 +127,13 @@ const InformasiZonasi = () => {
 
         {/* Content Table */}
         <div className="mx-auto max-w-7xl px-4 -mt-6">
+          <div className="flex md:hidden justify-end mb-2">
+            <Badge variant="outline" className="text-[9px] font-bold text-slate-400 border-slate-200 uppercase tracking-tighter animate-pulse">
+              Geser Horizontal &rarr;
+            </Badge>
+          </div>
           <div className="rounded-[2rem] bg-white shadow-2xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto custom-scrollbar">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-100">

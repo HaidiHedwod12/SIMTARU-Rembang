@@ -1003,9 +1003,17 @@ const PetaInteraktif = () => {
 
   return (
     <Layout hideFooter hideNavbar={isFullscreen || !isNavbarVisible}>
-      <div ref={containerRef} className={`relative flex transition-all duration-200 ${(isFullscreen || !isNavbarVisible) ? "h-screen w-screen bg-slate-100" : "h-[calc(100vh-64px)]"}`}>
+      <div ref={containerRef} className={`relative flex transition-all duration-200 ${(isFullscreen || !isNavbarVisible) ? "h-screen w-screen bg-slate-100" : "h-[calc(100vh-80px)] md:h-[calc(100vh-64px)]"}`}>
+        {/* Mobile Sidebar Backdrop */}
+        {panelOpen && (
+          <div 
+            className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-sm transition-opacity md:hidden"
+            onClick={() => setPanelOpen(false)}
+          />
+        )}
+        
         {/* Side panel */}
-        <div className={`relative z-[1001] flex-shrink-0 border-r bg-card transition-all duration-200 ${panelOpen ? "w-72" : "w-0 overflow-hidden"}`}>
+        <div className={`absolute md:relative z-[1001] h-full flex-shrink-0 border-r bg-card transition-all duration-300 ease-in-out ${panelOpen ? "w-[280px] sm:w-80 md:w-72 translate-x-0" : "w-0 -translate-x-full md:translate-x-0 overflow-hidden"}`}>
           <div className="p-4 space-y-2 overflow-y-auto h-full custom-scrollbar bg-slate-50/30">
             {["Batas Administrasi", "Jaringan Transportasi", "Perairan", "Rencana Tata Ruang"].map((cat) => {
               const isOpen = !collapsedCategories.has(cat);
@@ -1084,10 +1092,10 @@ const PetaInteraktif = () => {
         {/* Toggle button */}
         <button
           onClick={() => setPanelOpen(!panelOpen)}
-          className="absolute left-0 top-1/2 z-[1002] -translate-y-1/2 rounded-r-xl bg-[#1F5E3B] p-1.5 text-white shadow-lg transition-all hover:pl-3"
-          style={{ left: panelOpen ? "288px" : "0" }}
+          className="absolute left-0 top-1/2 z-[1002] -translate-y-1/2 rounded-r-xl bg-[#1F5E3B] p-2 text-white shadow-2xl transition-all duration-300 hover:pl-4"
+          style={{ left: panelOpen ? (window.innerWidth < 768 ? "280px" : "288px") : "0" }}
         >
-          {panelOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {panelOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
         </button>
 
         {/* Map area */}
@@ -1192,13 +1200,13 @@ const PetaInteraktif = () => {
           )}
 
           {/* Top bar (Shifted right with ml-12 and updated logic) */}
-          <div className="absolute left-4 right-4 top-4 z-[1001] flex items-center justify-between gap-2 pointer-events-none">
-            <div className="flex w-full max-w-sm ml-12 items-center gap-2 bg-white/90 pl-1 pr-4 py-1 shadow-xl backdrop-blur-md rounded-2xl border border-white/20 pointer-events-auto">
+          <div className="absolute left-4 right-4 top-4 z-[1001] flex flex-col md:flex-row md:items-center justify-between gap-3 pointer-events-none">
+            <div className="flex w-full max-w-sm md:ml-12 items-center gap-2 bg-white/95 pl-1 pr-4 py-1 shadow-xl backdrop-blur-md rounded-2xl border border-white/20 pointer-events-auto">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={performSearch}
-                className="h-8 w-8 rounded-xl hover:bg-[#1F5E3B]/10 hover:text-[#1F5E3B]"
+                className="h-9 w-9 rounded-xl hover:bg-[#1F5E3B]/10 hover:text-[#1F5E3B]"
               >
                 <Search className="h-4 w-4" />
               </Button>
@@ -1207,11 +1215,11 @@ const PetaInteraktif = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleSearchKeyPress}
-                className="h-10 border-none bg-transparent shadow-none focus-visible:ring-0 text-slate-700 p-0"
+                className="h-10 border-none bg-transparent shadow-none focus-visible:ring-0 text-slate-700 p-0 text-xs md:text-sm"
               />
             </div>
 
-            <div className="flex gap-2 pointer-events-auto">
+            <div className="flex gap-2 pointer-events-auto self-end md:self-auto overflow-x-auto pb-1 md:pb-0 max-w-full">
               <div className="flex bg-white/90 p-1 shadow-xl backdrop-blur-md rounded-2xl border border-white/20 gap-1">
                 <Button
                   size="icon"
@@ -1341,8 +1349,8 @@ const PetaInteraktif = () => {
           </div>
 
           {/* Coordinates (Moved after Map div and increased z-index) */}
-          <div className="absolute bottom-6 right-6 z-[1001] rounded-xl bg-[#1F5E3B] px-4 py-2 text-[10px] font-black tracking-widest text-white shadow-2xl backdrop-blur-md border border-white/10 uppercase">
-            LAT: {coords.lat.toFixed(6)} | LNG: {coords.lng.toFixed(6)}
+          <div className="absolute bottom-6 right-6 z-[1001] rounded-xl bg-[#1F5E3B] px-3 md:px-4 py-2 text-[8px] md:text-[10px] font-black tracking-widest text-white shadow-2xl backdrop-blur-md border border-white/10 uppercase">
+            {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
           </div>
 
           {/* Loading */}
@@ -1361,7 +1369,7 @@ const PetaInteraktif = () => {
 
         {/* Floating Feature Info Panel */}
         <div
-          className={`absolute right-6 top-24 z-[1005] w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${infoPanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          className={`fixed md:absolute left-4 right-4 md:left-auto md:right-6 top-24 z-[1005] w-auto md:w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${infoPanelOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-8 pointer-events-none"}`}
           style={{ maxHeight: "calc(100% - 140px)" }}
         >
           {selectedFeature && (
@@ -1474,7 +1482,7 @@ const PetaInteraktif = () => {
 
         {/* Floating Download Panel */}
         <div
-          className={`absolute right-6 top-24 z-[1005] w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${downloadPanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          className={`fixed md:absolute left-4 right-4 md:left-auto md:right-6 top-24 z-[1005] w-auto md:w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${downloadPanelOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-8 pointer-events-none"}`}
           style={{ maxHeight: "calc(100% - 140px)" }}
         >
           <div className="flex h-full max-h-[inherit] flex-col overflow-hidden">
@@ -1536,7 +1544,7 @@ const PetaInteraktif = () => {
 
         {/* Floating Print Panel */}
         <div
-          className={`absolute right-6 top-24 z-[1005] w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${printPanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          className={`fixed md:absolute left-4 right-4 md:left-auto md:right-6 top-24 z-[1005] w-auto md:w-80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${printPanelOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-8 pointer-events-none"}`}
           style={{ maxHeight: "calc(100% - 140px)" }}
         >
           <div className="flex h-full max-h-[inherit] flex-col overflow-hidden">
@@ -1619,7 +1627,7 @@ const PetaInteraktif = () => {
 
         {/* Floating Style Editor Panel */}
         <div
-          className={`absolute left-[300px] top-4 z-[1010] w-64 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-white/20 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] ${activeStyleLayerID ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"}`}
+          className={`fixed md:absolute left-4 right-4 md:left-[300px] md:right-auto top-4 md:top-4 z-[1010] w-auto md:w-64 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-white/20 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] ${activeStyleLayerID ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"}`}
         >
           {activeStyleLayerID && (
             <div className="p-5 flex flex-col gap-5">

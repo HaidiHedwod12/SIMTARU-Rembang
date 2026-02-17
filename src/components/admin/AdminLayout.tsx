@@ -123,7 +123,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     </div>
                 </header>
 
-                <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
+                <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
                     {children}
                 </main>
             </div>

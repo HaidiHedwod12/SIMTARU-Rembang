@@ -168,7 +168,7 @@ const ProfilDPUPR = () => {
                             {bidangData.map((bidang, idx) => (
                                 <Dialog key={idx}>
                                     <DialogTrigger asChild>
-                                        <button className="group flex flex-col items-center rounded-[2rem] border border-slate-50 bg-slate-50/50 p-8 text-center transition-all hover:bg-white hover:shadow-2xl hover:shadow-primary/5 active:scale-95">
+                                        <button className="group flex flex-col items-center rounded-[2rem] border border-slate-50 bg-slate-50/50 p-6 sm:p-8 text-center transition-all hover:bg-white hover:shadow-2xl hover:shadow-primary/5 active:scale-95">
                                             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg text-primary transition-transform group-hover:scale-110">
                                                 <bidang.icon className="h-8 w-8" />
                                             </div>

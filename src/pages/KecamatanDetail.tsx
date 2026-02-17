@@ -44,7 +44,7 @@ const KecamatanDetail = () => {
                                 <div className="h-10 w-1.5 rounded-full bg-primary" />
                                 <span className="text-sm font-black uppercase tracking-[0.4em] text-white">Profil Kecamatan</span>
                             </div>
-                            <h1 className="mt-4 text-5xl font-black text-white md:text-8xl">{kecamatan.name}</h1>
+                            <h1 className="mt-4 text-3xl sm:text-4xl md:text-8xl font-black text-white leading-tight">{kecamatan.name}</h1>
                         </div>
                     </div>
                 </div>
@@ -86,7 +86,7 @@ const KecamatanDetail = () => {
                                     <h3 className="text-2xl font-black text-slate-800">Potensi Spasial</h3>
                                     <Share2 className="h-5 w-5 text-slate-300" />
                                 </div>
-                                <div className="aspect-[21/9] w-full rounded-3xl bg-slate-100 overflow-hidden relative group border border-slate-200">
+                                <div className="aspect-video md:aspect-[21/9] w-full rounded-3xl bg-slate-100 overflow-hidden relative group border border-slate-200">
                                     <img
                                         src={kecamatan.image}
                                         alt={`Peta Spasial ${kecamatan.name}`}

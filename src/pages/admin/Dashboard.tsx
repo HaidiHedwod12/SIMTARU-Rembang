@@ -78,7 +78,7 @@ const Dashboard = () => {
                                 <option>30 Hari Terakhir</option>
                             </select>
                         </div>
-                        <div className="aspect-[21/9] bg-slate-50 rounded-3xl flex items-center justify-center text-slate-300 font-bold italic">
+                        <div className="aspect-video md:aspect-[21/9] bg-slate-50 rounded-3xl flex items-center justify-center text-slate-300 font-bold italic text-center p-6">
                             Grafik Aktivitas Pengunjung (Visual Placeholder)
                         </div>
                     </div>
