@@ -3,13 +3,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Printer, Download, Search, ChevronLeft, ChevronRight, Loader2, Map, Layers, Maximize, Minimize, Copy, ExternalLink, Eye, EyeOff, CheckCircle2, Ruler, BoxSelect, Trash2, ChevronDown, Palette, SlidersHorizontal, Plus, Minus
+  Printer, Download, Search, ChevronLeft, ChevronRight, Loader2, Map, Layers, Maximize, Minimize, Copy, ExternalLink, Eye, EyeOff, CheckCircle2, Ruler, BoxSelect, Trash2, ChevronDown, Palette, SlidersHorizontal, Plus, Minus, ShieldCheck
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import "leaflet/dist/leaflet.css";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { identifikasiZona } from "@/services/zonasiService";
+import { Regulation } from "@/data/zonasi";
+import CompliancePanel from "@/components/map/CompliancePanel";
 
 const layers = [
   {
@@ -31,7 +34,7 @@ const layers = [
     type: "polygon",
     color: "#1F5E3B",
     weight: 2,
-    defaultOn: true,
+    defaultOn: false,
     primaryField: "Nama_Wilayah_Administrasi_Kecamatan/Distirk"
   },
   {
@@ -159,6 +162,12 @@ const PetaInteraktif = () => {
 
   const lastSelectedLayerRef = useRef<any>(null);
   const resetSelectionRef = useRef<(() => void) | null>(null);
+
+  // Compliance Check State
+  const [complianceMode, setComplianceMode] = useState<'none' | 'point' | 'polygon'>('none');
+  const [complianceZona, setComplianceZona] = useState<Regulation | null>(null);
+  const [isCompliancePanelOpen, setIsCompliancePanelOpen] = useState(false);
+  const complianceLayersRef = useRef<any[]>([]);
 
   // Styling & Category State
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -718,6 +727,108 @@ const PetaInteraktif = () => {
     };
   }, [measureTool, L]);
 
+  // Effect to handle spatial compliance check tool
+  useEffect(() => {
+    if (!mapInstance.current || !L || complianceMode === 'none') return;
+
+    const map = mapInstance.current;
+    let points: any[] = [];
+    let isFinished = false;
+
+    const clearComplianceSelection = () => {
+      complianceLayersRef.current.forEach(layer => map.removeLayer(layer));
+      complianceLayersRef.current = [];
+      if (tempLineRef.current) {
+        map.removeLayer(tempLineRef.current);
+        tempLineRef.current = null;
+      }
+      points = [];
+      isFinished = false;
+    };
+
+    const finalizeCompliance = async () => {
+      if (isFinished || points.length === 0) return;
+      isFinished = true;
+
+      if (tempLineRef.current) {
+        map.removeLayer(tempLineRef.current);
+        tempLineRef.current = null;
+      }
+
+      toast({ title: "Mengidentifikasi Zona", description: "Sedang menganalisis koordinat..." });
+
+      try {
+        const zona = await identifikasiZona(points.length === 1 ? points[0] : points);
+        setComplianceZona(zona);
+        setIsCompliancePanelOpen(true);
+      } catch (err) {
+        toast({ title: "Gagal", description: "Tidak dapat mengidentifikasi zona di lokasi ini.", variant: "destructive" });
+      }
+
+      setComplianceMode('none');
+    };
+
+    const onMapClick = (e: any) => {
+      if (isFinished) return;
+      const latlng = e.latlng;
+      points.push(latlng);
+
+      if (complianceMode === 'point') {
+        const marker = L.circleMarker(latlng, { radius: 8, fillColor: "#D4A017", color: "#fff", weight: 3, fillOpacity: 0.8 }).addTo(map);
+        complianceLayersRef.current.push(marker);
+        finalizeCompliance();
+      } else if (complianceMode === 'polygon') {
+        const marker = L.circleMarker(latlng, { radius: 4, fillColor: "#D4A017", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(map);
+        complianceLayersRef.current.push(marker);
+
+        const poly = complianceLayersRef.current.find(l => l instanceof L.Polygon);
+        if (poly) map.removeLayer(poly);
+
+        if (points.length >= 3) {
+          const polygon = L.polygon(points, { color: "#D4A017", fillColor: "#D4A017", fillOpacity: 0.2, weight: 3, dashArray: '5, 5' }).addTo(map);
+          complianceLayersRef.current.push(polygon);
+        } else if (points.length === 2) {
+          const line = L.polyline(points, { color: "#D4A017", weight: 3, dashArray: '5, 5' }).addTo(map);
+          complianceLayersRef.current.push(line);
+        }
+      }
+    };
+
+    const onMouseMove = (e: any) => {
+      if (points.length === 0 || isFinished || complianceMode !== 'polygon') return;
+      const latlng = e.latlng;
+      if (tempLineRef.current) map.removeLayer(tempLineRef.current);
+      tempLineRef.current = L.polyline([...points, latlng], { color: "#D4A017", weight: 2, dashArray: '5, 5', opacity: 0.5 }).addTo(map);
+    };
+
+    const onDblClick = (e: any) => {
+      if (complianceMode === 'polygon') {
+        L.DomEvent.stopPropagation(e);
+        finalizeCompliance();
+      }
+    };
+
+    const onKeyDown = (e: any) => {
+      if (e.key === 'Enter') finalizeCompliance();
+      if (e.key === 'Escape') setComplianceMode('none');
+    };
+
+    map.on('click', onMapClick);
+    map.on('mousemove', onMouseMove);
+    map.on('dblclick', onDblClick);
+    window.addEventListener('keydown', onKeyDown);
+    map.getContainer().style.cursor = 'help';
+
+    return () => {
+      map.off('click', onMapClick);
+      map.off('mousemove', onMouseMove);
+      map.off('dblclick', onDblClick);
+      window.removeEventListener('keydown', onKeyDown);
+      map.getContainer().style.cursor = '';
+      clearComplianceSelection();
+    };
+  }, [complianceMode, L]);
+
   const activeLayerConfig = activeStyleLayerID ? layers.find(l => l.id === activeStyleLayerID) : null;
   const currentLayerStyle = activeStyleLayerID ? layerStyles[activeStyleLayerID] : null;
 
@@ -1006,12 +1117,12 @@ const PetaInteraktif = () => {
       <div ref={containerRef} className={`relative flex transition-all duration-200 ${(isFullscreen || !isNavbarVisible) ? "h-screen w-screen bg-slate-100" : "h-[calc(100vh-80px)] md:h-[calc(100vh-64px)]"}`}>
         {/* Mobile Sidebar Backdrop */}
         {panelOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-sm transition-opacity md:hidden"
             onClick={() => setPanelOpen(false)}
           />
         )}
-        
+
         {/* Side panel */}
         <div className={`absolute md:relative z-[1001] h-full flex-shrink-0 border-r bg-card transition-all duration-300 ease-in-out ${panelOpen ? "w-[280px] sm:w-80 md:w-72 translate-x-0" : "w-0 -translate-x-full md:translate-x-0 overflow-hidden"}`}>
           <div className="p-4 space-y-2 overflow-y-auto h-full custom-scrollbar bg-slate-50/30">
@@ -1238,6 +1349,44 @@ const PetaInteraktif = () => {
                   title="Ukur Luas"
                 >
                   <BoxSelect className="h-5 w-5" />
+                </Button>
+                <div className="w-px h-6 bg-slate-200 mx-1 self-center" />
+                <Button
+                  size="icon"
+                  variant={complianceMode === 'point' ? 'default' : 'ghost'}
+                  onClick={() => {
+                    setComplianceMode(complianceMode === 'point' ? 'none' : 'point');
+                    if (complianceMode !== 'point') {
+                      toast({
+                        title: "Cek Kesesuaian (Titik)",
+                        description: "Klik pada satu titik di peta untuk mengecek zonasi."
+                      });
+                    }
+                  }}
+                  className={`h-10 w-10 rounded-xl transition-all ${complianceMode === 'point' ? 'bg-[#D4A017] text-white shadow-lg' : 'text-slate-500 hover:text-[#D4A017] hover:bg-[#D4A017]/10'}`}
+                  title="Cek Kesesuaian (Titik)"
+                >
+                  <ShieldCheck className="h-5 w-5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant={complianceMode === 'polygon' ? 'default' : 'ghost'}
+                  onClick={() => {
+                    setComplianceMode(complianceMode === 'polygon' ? 'none' : 'polygon');
+                    if (complianceMode !== 'polygon') {
+                      toast({
+                        title: "Cek Kesesuaian (Poligon)",
+                        description: "Klik beberapa titik untuk membuat area, lalu klik dua kali untuk selesai."
+                      });
+                    }
+                  }}
+                  className={`h-10 w-10 rounded-xl transition-all ${complianceMode === 'polygon' ? 'bg-[#D4A017] text-white shadow-lg' : 'text-slate-500 hover:text-[#D4A017] hover:bg-[#D4A017]/10'}`}
+                  title="Cek Kesesuaian (Poligon)"
+                >
+                  <div className="relative">
+                    <ShieldCheck className="h-5 w-5" />
+                    <BoxSelect className="h-2.5 w-2.5 absolute -bottom-1 -right-1 bg-white rounded-sm text-[#D4A017]" />
+                  </div>
                 </Button>
               </div>
 
@@ -1717,6 +1866,17 @@ const PetaInteraktif = () => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Floating Compliance Panel */}
+        <div
+          className={`fixed md:absolute right-4 md:right-6 top-24 z-[1006] w-auto md:w-96 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-3xl border border-white/20 transition-all duration-500 ease-in-out ${isCompliancePanelOpen ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-8 pointer-events-none"}`}
+          style={{ maxHeight: "calc(100% - 140px)" }}
+        >
+          <CompliancePanel
+            zona={complianceZona}
+            onClose={() => setIsCompliancePanelOpen(false)}
+          />
         </div>
       </div>
 
